@@ -692,17 +692,17 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
-        private static int FirstOffsetPastNewlines(NonEmptyNode root, int desiredNewlineCount)
+        private static int LineOffset(NonEmptyNode root, int desiredLineNumber)
         {
             NodeInfo taken = NodeInfo.Zero;
             ImmutableStack<NonEmptyNode> untaken = ImmutableStack<NonEmptyNode>.Empty.Push(root);
 
-            while (!untaken.IsEmpty && desiredNewlineCount > taken.NewlineCount)
+            while (!untaken.IsEmpty && desiredLineNumber > taken.NewlineCount)
             {
                 NonEmptyNode n = untaken.Peek();
                 NodeInfo pastN = taken + n.NodeInfo;
 
-                if (desiredNewlineCount > pastN.NewlineCount)
+                if (desiredLineNumber > pastN.NewlineCount)
                 {
                     taken = pastN;
                     untaken = untaken.Pop();
@@ -714,7 +714,7 @@ namespace Sunlighter.FrayedKnot
 
                     System.Diagnostics.Debug.Assert(str.Length > 0);
                     int startPos = (taken.EndsWithReturn && leaf.NodeInfo.StartsWithNewline) ? 1 : 0;
-                    int endPos = FirstOffsetPastNewlines(str, startPos, desiredNewlineCount - taken.NewlineCount);
+                    int endPos = FirstOffsetPastNewlines(str, startPos, desiredLineNumber - taken.NewlineCount);
                     if (endPos > 0)
                     {
                         if (endPos == str.Length && str[^1] == '\r' && !untaken.IsEmpty && untaken.Peek().NodeInfo.StartsWithNewline)
@@ -728,7 +728,7 @@ namespace Sunlighter.FrayedKnot
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"Leaf eaten! (desiredNewlineCount = {desiredNewlineCount}");
+                        System.Diagnostics.Debug.WriteLine($"Leaf eaten! (desiredLineNumber = {desiredLineNumber}");
                         taken = pastN;
                     }
                 }
@@ -764,7 +764,7 @@ namespace Sunlighter.FrayedKnot
             }
             else
             {
-                return FirstOffsetPastNewlines((NonEmptyNode)root, line);
+                return LineOffset((NonEmptyNode)root, line);
             }
         }
 
