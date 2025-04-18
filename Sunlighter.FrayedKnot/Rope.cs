@@ -232,7 +232,7 @@ namespace Sunlighter.FrayedKnot
             this.root = root;
         }
 
-        private static Rope empty = new Rope(EmptyNode.Value);
+        private static readonly Rope empty = new Rope(EmptyNode.Value);
 
         /// <summary>
         /// Returns an empty Rope.
@@ -957,9 +957,9 @@ namespace Sunlighter.FrayedKnot
 
             private void Push(NonEmptyNode n)
             {
-                if (n is LeafNode)
+                if (n is LeafNode leaf)
                 {
-                    leafStack = leafStack.Push(((LeafNode)n).Value);
+                    leafStack = leafStack.Push(leaf.Value);
                 }
                 else
                 {
@@ -1062,7 +1062,7 @@ namespace Sunlighter.FrayedKnot
                 }
             }
 
-            int blockSize = 16384;
+            private const int blockSize = 16384;
 
             public void AddToHash(HashBuilder b, Rope a)
             {
