@@ -84,11 +84,11 @@ namespace Sunlighter.FrayedKnot
             return new NodeInfo(str.Length, newlineCount, startsWithNewline, endsWithReturn);
         }
 
-        private static int FirstOffsetPastNewlines(string str, int startPos, int desiredNewlineCount)
+        private static int LineOffset(string str, int startPos, int desiredLineNumber)
         {
             System.Diagnostics.Debug.Assert(str is not null);
             System.Diagnostics.Debug.Assert(startPos <= str.Length);
-            System.Diagnostics.Debug.Assert(desiredNewlineCount > 0);
+            System.Diagnostics.Debug.Assert(desiredLineNumber > 0);
 
             int newlineCount = 0;
             int pos = startPos;
@@ -99,7 +99,7 @@ namespace Sunlighter.FrayedKnot
                 {
                     ++newlineCount;
                     ++pos;
-                    if (newlineCount == desiredNewlineCount)
+                    if (newlineCount == desiredLineNumber)
                     {
                         return pos;
                     }
@@ -112,7 +112,7 @@ namespace Sunlighter.FrayedKnot
                     {
                         ++pos;
                     }
-                    if (newlineCount == desiredNewlineCount)
+                    if (newlineCount == desiredLineNumber)
                     {
                         return pos;
                     }
@@ -714,7 +714,7 @@ namespace Sunlighter.FrayedKnot
 
                     System.Diagnostics.Debug.Assert(str.Length > 0);
                     int startPos = (taken.EndsWithReturn && leaf.NodeInfo.StartsWithNewline) ? 1 : 0;
-                    int endPos = FirstOffsetPastNewlines(str, startPos, desiredLineNumber - taken.NewlineCount);
+                    int endPos = LineOffset(str, startPos, desiredLineNumber - taken.NewlineCount);
                     if (endPos > 0)
                     {
                         if (endPos == str.Length && str[^1] == '\r' && !untaken.IsEmpty && untaken.Peek().NodeInfo.StartsWithNewline)
