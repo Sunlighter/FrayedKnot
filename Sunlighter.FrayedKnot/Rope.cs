@@ -1005,20 +1005,25 @@ namespace Sunlighter.FrayedKnot
                 }
             }
 
+            int blockSize = 16384;
+
             public void AddToHash(HashBuilder b, Rope a)
             {
-                LeafReader ar = new LeafReader((NonEmptyNode)a.root);
-                while (!ar.IsEmpty)
+                int blockCount = a.Length / blockSize;
+                if (a.Length % blockSize != 0)
                 {
-                    int nextLen = ar.LeafSize();
-                    string aStr = ar.Consume(nextLen);
-                    b.Add(Encoding.UTF8.GetBytes(aStr));
+                    ++blockCount;
+                }
+                for (int i = 0; i < blockCount; ++i)
+                {
+                    string aPrefix = a.Take(blockSize).ToString();
+                    a = a.Skip(blockSize);
+                    StringTypeTraits.Value.AddToHash(b, aPrefix);
                 }
             }
 
             public bool CanSerialize(Rope a) => true;
 
-            int blockSize = 16384;
 
             public void Serialize(Serializer dest, Rope a)
             {
