@@ -793,5 +793,64 @@ namespace Sunlighter.FrayedKnot
                 return empty;
             }
         }
+
+        public char this[int index]
+        {
+            get
+            {
+                if (index < 0) throw new IndexOutOfRangeException(nameof(index));
+                if (root is EmptyNode) throw new IndexOutOfRangeException(nameof(index));
+
+                NonEmptyNode nRoot = (NonEmptyNode)root;
+                if (index >= nRoot.NodeInfo.Length) throw new IndexOutOfRangeException(nameof(index));
+
+                static char GetChar(NonEmptyNode node, int index)
+                {
+                    if (node is LeafNode leaf)
+                    {
+                        return leaf.Value[index];
+                    }
+                    else if (node is TwoNode two)
+                    {
+                        int leftLen = two.Left.NodeInfo.Length;
+                        if (index < leftLen)
+                        {
+                            return GetChar(two.Left, index);
+                        }
+                        else
+                        {
+                            return GetChar(two.Right, index - leftLen);
+                        }
+                    }
+                    else if (node is ThreeNode three)
+                    {
+                        int leftLen = three.Left.NodeInfo.Length;
+                        if (index < leftLen)
+                        {
+                            return GetChar(three.Left, index);
+                        }
+                        else
+                        {
+                            index -= leftLen;
+                            int midLen = three.Middle.NodeInfo.Length;
+                            if (index < midLen)
+                            {
+                                return GetChar(three.Middle, index);
+                            }
+                            else
+                            {
+                                return GetChar(three.Right, index - midLen);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Internal error: Invalid node type");
+                    }
+                }
+
+                return GetChar(nRoot, index);
+            }
+        }
     }
 }
