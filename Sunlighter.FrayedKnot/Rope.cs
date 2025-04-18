@@ -4,6 +4,9 @@ using System.Text;
 
 namespace Sunlighter.FrayedKnot
 {
+    /// <summary>
+    /// A Rope is a data structure that represents a string as a balanced tree of smaller strings. It is used to efficiently manipulate large strings.
+    /// </summary>
     public sealed class Rope : IEquatable<Rope>, IComparable<Rope>
     {
         private const int MinLeafSize = 32;
@@ -231,8 +234,14 @@ namespace Sunlighter.FrayedKnot
 
         private static Rope empty = new Rope(EmptyNode.Value);
 
+        /// <summary>
+        /// Returns an empty Rope.
+        /// </summary>
         public static Rope Empty => empty;
 
+        /// <summary>
+        /// Converts a string to a Rope.
+        /// </summary>
         public static implicit operator Rope(string str)
         {
             ArgumentNullException.ThrowIfNull(str, nameof(str));
@@ -266,7 +275,6 @@ namespace Sunlighter.FrayedKnot
                         }
                         else if (left is ThreeNode leftThree)
                         {
-                            System.Diagnostics.Debug.WriteLine("WARNING: left node unexpectedly large!");
                             return new TwoNode(new TwoNode(leftThree.Left, leftThree.Middle), new TwoNode(leftThree.Right, right));
                         }
                         else
@@ -282,7 +290,6 @@ namespace Sunlighter.FrayedKnot
                         }
                         else if (right is ThreeNode rightThree)
                         {
-                            System.Diagnostics.Debug.WriteLine("WARNING: right node unexpectedly large!");
                             return new TwoNode(new TwoNode(left, rightThree.Left), new TwoNode(rightThree.Middle, rightThree.Right));
                         }
                         else
@@ -302,6 +309,9 @@ namespace Sunlighter.FrayedKnot
             return new Rope(node);
         }
 
+        /// <summary>
+        /// Converts a Rope to a string.
+        /// </summary>
         public static implicit operator string(Rope r)
         {
             ArgumentNullException.ThrowIfNull(r, nameof(r));
@@ -350,6 +360,9 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
+        /// <summary>
+        /// Converts a Rope to a string.
+        /// </summary>
         public override string ToString()
         {
             return (string)this;
@@ -502,6 +515,9 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
+        /// <summary>
+        /// Concatenates two ropes.
+        /// </summary>
         public static Rope operator +(Rope a, Rope b)
         {
             if (a.IsEmpty && b.IsEmpty) return empty;
@@ -525,8 +541,14 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
+        /// <summary>
+        /// Returns true if and only if this Rope is empty.
+        /// </summary>
         public bool IsEmpty => root is EmptyNode;
 
+        /// <summary>
+        /// Returns the number of characters in this Rope.
+        /// </summary>
         public int Length
         {
             get
@@ -546,6 +568,9 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
+        /// <summary>
+        /// Returns the number of lines in this Rope. There is always at least one. The last line doesn't end in a newline character.
+        /// </summary>
         public int LineCount
         {
             get
@@ -612,6 +637,9 @@ namespace Sunlighter.FrayedKnot
             return (taken, untaken);
         }
 
+        /// <summary>
+        /// Returns a new Rope created by skipping the first <paramref name="charCount"/> characters of this Rope.
+        /// </summary>
         public Rope Skip(int charCount)
         {
             if (charCount < 0) throw new ArgumentException($"{nameof(charCount)} cannot be negative", nameof(charCount));
@@ -655,6 +683,9 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
+        /// <summary>
+        /// Returns a new Rope created by taking only the first <paramref name="charCount"/> characters of this Rope.
+        /// </summary>
         public Rope Take(int charCount)
         {
             if (charCount < 0) throw new ArgumentException($"{nameof(charCount)} cannot be negative", nameof(charCount));
@@ -756,6 +787,10 @@ namespace Sunlighter.FrayedKnot
             return -1;
         }
 
+        /// <summary>
+        /// Returns the character offset of the start of the specified line, or -1 if the line does not exist.
+        /// </summary>
+
         public int LineOffset(int line)
         {
             if (line < 0) throw new ArgumentException($"{nameof(line)} cannot be negative", nameof(line));
@@ -774,6 +809,10 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
+        /// <summary>
+        /// Returns a new Rope created by skipping the first <paramref name="lineCount"/> lines of this Rope.
+        /// </summary>
+
         public Rope SkipLines(int lineCount)
         {
             int offset = LineOffset(lineCount);
@@ -787,6 +826,9 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
+        /// <summary>
+        /// Returns a new Rope created by taking only the first <paramref name="lineCount"/> lines of this Rope. An empty line is added to the end!
+        /// </summary>
         public Rope TakeLines(int lineCount)
         {
             int offset = LineOffset(lineCount);
@@ -800,6 +842,9 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
+        /// <summary>
+        /// Returns true only if this Rope equals the specified object.
+        /// </summary>
         public override bool Equals(object? obj)
         {
             if (obj is Rope r)
@@ -809,23 +854,35 @@ namespace Sunlighter.FrayedKnot
             else return false;
         }
 
+        /// <summary>
+        /// Returns a hash code for this rope.
+        /// </summary>
         public override int GetHashCode()
         {
             return ropeTraits.GetBasicHashCode(this);
         }
 
+        /// <summary>
+        /// Returns true only if this Rope equals the specified Rope.
+        /// </summary>
         public bool Equals(Rope? other)
         {
             if (other is null) return false;
             return ropeTraits.Compare(this, other) == 0;
         }
 
+        /// <summary>
+        /// Compares the content of this rope to the given Rope.
+        /// </summary>
         public int CompareTo(Rope? other)
         {
             if (other is null) return 1;
             return ropeTraits.Compare(this, other);
         }
 
+        /// <summary>
+        /// Gets the character at the specified index.
+        /// </summary>
         public char this[int index]
         {
             get
@@ -1096,20 +1153,52 @@ namespace Sunlighter.FrayedKnot
 
         private static readonly RopeTraits ropeTraits = new RopeTraits();
 
+        /// <summary>
+        /// Gets the Type Traits for the Rope class.
+        /// </summary>
         public static ITypeTraits<Rope> TypeTraits => ropeTraits;
 
+        /// <summary>
+        /// Return true if the two Ropes are equal, and false otherwise.
+        /// </summary>
         public static bool operator ==(Rope a, Rope b) => ropeTraits.Compare(a, b) == 0;
+
+        /// <summary>
+        /// Return true if the two Ropes are not equal, and false otherwise.
+        /// </summary>
         public static bool operator !=(Rope a, Rope b) => ropeTraits.Compare(a, b) != 0;
+
+        /// <summary>
+        /// Return true if the first Rope is less than the second Rope, and false otherwise.
+        /// </summary>
         public static bool operator <(Rope a, Rope b) => ropeTraits.Compare(a, b) < 0;
+
+        /// <summary>
+        /// Return true if the first Rope is greater than the second Rope, and false otherwise.
+        /// </summary>
         public static bool operator >(Rope a, Rope b) => ropeTraits.Compare(a, b) > 0;
+
+        /// <summary>
+        /// Return true if the first Rope is less than or equal to the second Rope, and false otherwise.
+        /// </summary>
         public static bool operator <=(Rope a, Rope b) => ropeTraits.Compare(a, b) <= 0;
+
+        /// <summary>
+        /// Return true if the first Rope is greater than or equal to the second Rope, and false otherwise.
+        /// </summary>
         public static bool operator >=(Rope a, Rope b) => ropeTraits.Compare(a, b) >= 0;
     }
 
+    /// <summary>
+    /// Utility methods for working with Ropes.
+    /// </summary>
     public static class RopeUtility
     {
         private const int bufSize = 16384;
 
+        /// <summary>
+        /// Reads a Rope from the specified TextReader until the end of the stream.
+        /// </summary>
         public static Rope ReadRopeToEnd(this TextReader textReader)
         {
             ArgumentNullException.ThrowIfNull(textReader, nameof(textReader));
@@ -1137,6 +1226,9 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
+        /// <summary>
+        /// Writes the specified Rope to the given TextWriter.
+        /// </summary>
         public static void WriteRope(this TextWriter textWriter, Rope r)
         {
             ArgumentNullException.ThrowIfNull(textWriter, nameof(textWriter));
@@ -1149,6 +1241,9 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
+        /// <summary>
+        /// Reads the contents of the given file into a Rope.
+        /// </summary>
         public static Rope ReadRopeFromFile(string fileName, Encoding? encoding = null)
         {
             ArgumentNullException.ThrowIfNull(fileName, nameof(fileName));
@@ -1156,6 +1251,9 @@ namespace Sunlighter.FrayedKnot
             return sr.ReadRopeToEnd();
         }
 
+        /// <summary>
+        /// Creates or overwrites the given file with the given Rope.
+        /// </summary>
         public static void WriteRopeToFile(string fileName, Rope r, Encoding? encoding = null)
         {
             ArgumentNullException.ThrowIfNull(fileName, nameof(fileName));
