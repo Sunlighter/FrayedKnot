@@ -750,11 +750,11 @@ namespace Sunlighter.FrayedKnot
             return -1;
         }
 
-        public int FirstOffsetPastNewlines(int desiredNewlineCount)
+        public int LineOffset(int line)
         {
-            if (desiredNewlineCount < 0) throw new ArgumentException($"{nameof(desiredNewlineCount)} cannot be negative", nameof(desiredNewlineCount));
+            if (line < 0) throw new ArgumentException($"{nameof(line)} cannot be negative", nameof(line));
             
-            if (desiredNewlineCount == 0)
+            if (line == 0)
             {
                 return 0;
             }
@@ -764,7 +764,33 @@ namespace Sunlighter.FrayedKnot
             }
             else
             {
-                return FirstOffsetPastNewlines((NonEmptyNode)root, desiredNewlineCount);
+                return FirstOffsetPastNewlines((NonEmptyNode)root, line);
+            }
+        }
+
+        public Rope SkipLines(int lineCount)
+        {
+            int offset = LineOffset(lineCount);
+            if (offset > 0)
+            {
+                return Skip(offset);
+            }
+            else
+            {
+                return this;
+            }
+        }
+
+        public Rope TakeLines(int lineCount)
+        {
+            int offset = LineOffset(lineCount);
+            if (offset > 0)
+            {
+                return Take(offset);
+            }
+            else
+            {
+                return empty;
             }
         }
     }
