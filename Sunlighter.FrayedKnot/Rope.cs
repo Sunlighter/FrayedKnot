@@ -349,6 +349,11 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
+        public override string ToString()
+        {
+            return (string)this;
+        }
+
         private abstract class ConcatResult
         {
 
