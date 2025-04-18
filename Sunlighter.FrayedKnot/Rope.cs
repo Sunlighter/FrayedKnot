@@ -1105,4 +1105,62 @@ namespace Sunlighter.FrayedKnot
         public static bool operator <=(Rope a, Rope b) => ropeTraits.Compare(a, b) <= 0;
         public static bool operator >=(Rope a, Rope b) => ropeTraits.Compare(a, b) >= 0;
     }
+
+    public static class RopeUtility
+    {
+        private const int bufSize = 16384;
+
+        public static Rope ReadRopeToEnd(this TextReader textReader)
+        {
+            ArgumentNullException.ThrowIfNull(textReader, nameof(textReader));
+            Rope r = Rope.Empty;
+
+            while(true)
+            {
+                char[] buffer = new char[bufSize];
+                int actuallyRead = textReader.Read(buffer, 0, buffer.Length);
+
+                if (actuallyRead < buffer.Length)
+                {
+                    if (actuallyRead > 0)
+                    {
+                        string str = new string(buffer, 0, actuallyRead);
+                        r += str;
+                    }
+                    return r;
+                }
+                else
+                {
+                    string str = new string(buffer);
+                    r += str;
+                }
+            }
+        }
+
+        public static void WriteRope(this TextWriter textWriter, Rope r)
+        {
+            ArgumentNullException.ThrowIfNull(textWriter, nameof(textWriter));
+            while (true)
+            {
+                string prefix = r.Take(bufSize);
+                r = r.Skip(bufSize);
+                textWriter.Write(prefix);
+                if (r.IsEmpty) break;
+            }
+        }
+
+        public static Rope ReadRopeFromFile(string fileName, Encoding? encoding = null)
+        {
+            ArgumentNullException.ThrowIfNull(fileName, nameof(fileName));
+            using StreamReader sr = new StreamReader(fileName, encoding ?? Encoding.UTF8);
+            return sr.ReadRopeToEnd();
+        }
+
+        public static void WriteRopeToFile(string fileName, Rope r, Encoding? encoding = null)
+        {
+            ArgumentNullException.ThrowIfNull(fileName, nameof(fileName));
+            using StreamWriter sw = new StreamWriter(fileName, false, encoding ?? Encoding.UTF8);
+            sw.WriteRope(r);
+        }
+    }
 }
