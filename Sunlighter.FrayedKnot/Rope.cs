@@ -1,9 +1,10 @@
-﻿using System.Collections.Immutable;
+﻿using Sunlighter.TypeTraitsLib;
+using System.Collections.Immutable;
 using System.Text;
 
 namespace Sunlighter.FrayedKnot
 {
-    public sealed class Rope
+    public sealed class Rope : IEquatable<Rope>, IComparable<Rope>
     {
         private const int MinLeafSize = 32;
         private const int MaxLeafSize = 64;
@@ -799,6 +800,32 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
+        public override bool Equals(object? obj)
+        {
+            if (obj is Rope r)
+            {
+                return ropeTraits.Compare(this, r) == 0;
+            }
+            else return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return ropeTraits.GetBasicHashCode(this);
+        }
+
+        public bool Equals(Rope? other)
+        {
+            if (other is null) return false;
+            return ropeTraits.Compare(this, other) == 0;
+        }
+
+        public int CompareTo(Rope? other)
+        {
+            if (other is null) return 1;
+            return ropeTraits.Compare(this, other);
+        }
+
         public char this[int index]
         {
             get
@@ -857,5 +884,220 @@ namespace Sunlighter.FrayedKnot
                 return GetChar(nRoot, index);
             }
         }
+
+        private class LeafReader
+        {
+            private ImmutableStack<NonEmptyNode> nodeStack;
+            private ImmutableStack<string> leafStack;
+
+            public LeafReader(NonEmptyNode n)
+            {
+                nodeStack = ImmutableStack<NonEmptyNode>.Empty;
+                leafStack = ImmutableStack<string>.Empty;
+
+                Push(n);
+            }
+
+            private void Push(NonEmptyNode n)
+            {
+                if (n is LeafNode)
+                {
+                    leafStack = leafStack.Push(((LeafNode)n).Value);
+                }
+                else
+                {
+                    nodeStack = nodeStack.Push(n);
+                }
+            }
+
+            private void Normalize()
+            {
+                if (nodeStack.IsEmpty) return;
+
+                if (!leafStack.IsEmpty) return;
+
+                while (leafStack.IsEmpty)
+                {
+                    NonEmptyNode n = nodeStack.Peek();
+                    nodeStack = nodeStack.Pop();
+                    if (n is TwoNode two)
+                    {
+                        Push(two.Right);
+                        Push(two.Left);
+                    }
+                    else if (n is ThreeNode three)
+                    {
+                        Push(three.Right);
+                        Push(three.Middle);
+                        Push(three.Left);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Internal error: Invalid node type");
+                    }
+                }
+            }
+
+            public bool IsEmpty => nodeStack.IsEmpty;
+
+            public int LeafSize()
+            {
+                if (nodeStack.IsEmpty) return 0;
+                Normalize();
+                return leafStack.Peek().Length;
+            }
+
+            public string Consume(int i)
+            {
+                if (nodeStack.IsEmpty) throw new InvalidOperationException();
+                Normalize();
+                int avail = leafStack.Peek().Length;
+
+                if (i > avail) throw new InvalidOperationException("Attempt to consume too many characters");
+                else if (i == avail)
+                {
+                    string result = leafStack.Peek();
+                    leafStack = leafStack.Pop();
+                    return result;
+                }
+                else
+                {
+                    System.Diagnostics.Debug.Assert(i < avail);
+
+                    string leafStackTop = leafStack.Peek();
+                    leafStack = leafStack.Pop();
+                    string result = leafStackTop.Substring(0, i);
+                    leafStack = leafStack.Push(leafStackTop.Substring(i));
+                    return result;
+                }
+            }
+        }
+
+        private class RopeTraits : ITypeTraits<Rope>
+        {
+            public RopeTraits() { }
+
+            public int Compare(Rope a, Rope b)
+            {
+                if (a.IsEmpty && b.IsEmpty) return 0;
+                if (a.IsEmpty) return 1;
+                if (b.IsEmpty) return -1;
+
+                LeafReader ar = new LeafReader((NonEmptyNode)a.root);
+                LeafReader br = new LeafReader((NonEmptyNode)b.root);
+
+                while(true)
+                {
+                    int nextLen = Math.Min(ar.LeafSize(), br.LeafSize());
+                    string aStr = ar.Consume(nextLen);
+                    string bStr = br.Consume(nextLen);
+                    int cmp = string.Compare(aStr, bStr, StringComparison.Ordinal);
+                    if (cmp != 0)
+                    {
+                        return cmp;
+                    }
+                    else
+                    {
+                        if (ar.IsEmpty && br.IsEmpty) return 0;
+                        if (ar.IsEmpty) return -1;
+                        if (br.IsEmpty) return 1;
+                    }
+                }
+            }
+
+            public void AddToHash(HashBuilder b, Rope a)
+            {
+                LeafReader ar = new LeafReader((NonEmptyNode)a.root);
+                while (!ar.IsEmpty)
+                {
+                    int nextLen = ar.LeafSize();
+                    string aStr = ar.Consume(nextLen);
+                    b.Add(Encoding.UTF8.GetBytes(aStr));
+                }
+            }
+
+            public bool CanSerialize(Rope a) => true;
+
+            int blockSize = 16384;
+
+            public void Serialize(Serializer dest, Rope a)
+            {
+                int blockCount = a.Length / blockSize;
+                if (a.Length % blockSize != 0)
+                {
+                    ++blockCount;
+                }
+                Int32TypeTraits.Value.Serialize(dest, blockCount);
+                for(int i = 0; i < blockCount; ++i)
+                {
+                    string aPrefix = a.Take(blockSize).ToString();
+                    a = a.Skip(blockSize);
+                    StringTypeTraits.Value.Serialize(dest, aPrefix);
+                }
+            }
+
+            public Rope Deserialize(Deserializer src)
+            {
+                int blockCount = Int32TypeTraits.Value.Deserialize(src);
+                Rope result = empty;
+                for(int i = 0; i < blockCount; ++i)
+                {
+                    string aPrefix = StringTypeTraits.Value.Deserialize(src);
+                    result += aPrefix;
+                }
+                return result;
+            }
+
+            public void MeasureBytes(ByteMeasurer measurer, Rope a)
+            {
+                int blockCount = a.Length / blockSize;
+                if (a.Length % blockSize != 0)
+                {
+                    ++blockCount;
+                }
+                Int32TypeTraits.Value.MeasureBytes(measurer, blockCount);
+                for (int i = 0; i < blockCount; ++i)
+                {
+                    string aPrefix = a.Take(blockSize).ToString();
+                    a = a.Skip(blockSize);
+                    StringTypeTraits.Value.MeasureBytes(measurer, aPrefix);
+                }
+            }
+
+            public void AppendDebugString(DebugStringBuilder sb, Rope a)
+            {
+                if (a.IsEmpty)
+                {
+                    sb.Builder.Append("(empty-rope)");
+                }
+                else
+                {
+                    LeafReader ar = new LeafReader((NonEmptyNode)a.root);
+                    sb.Builder.Append("(rope ");
+                    while (!ar.IsEmpty)
+                    {
+                        int nextLen = ar.LeafSize();
+                        string aStr = ar.Consume(nextLen);
+                        sb.Builder.AppendQuoted(aStr);
+                        if (!ar.IsEmpty)
+                        {
+                            sb.Builder.Append(", ");
+                        }
+                    }
+                    sb.Builder.Append(')');
+                }
+            }
+        }
+
+        private static readonly RopeTraits ropeTraits = new RopeTraits();
+
+        public static ITypeTraits<Rope> TypeTraits => ropeTraits;
+
+        public static bool operator ==(Rope a, Rope b) => ropeTraits.Compare(a, b) == 0;
+        public static bool operator !=(Rope a, Rope b) => ropeTraits.Compare(a, b) != 0;
+        public static bool operator <(Rope a, Rope b) => ropeTraits.Compare(a, b) < 0;
+        public static bool operator >(Rope a, Rope b) => ropeTraits.Compare(a, b) > 0;
+        public static bool operator <=(Rope a, Rope b) => ropeTraits.Compare(a, b) <= 0;
+        public static bool operator >=(Rope a, Rope b) => ropeTraits.Compare(a, b) >= 0;
     }
 }

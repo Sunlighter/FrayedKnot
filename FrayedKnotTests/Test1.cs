@@ -1,6 +1,7 @@
 ﻿using Sunlighter.FrayedKnot;
 using Sunlighter.TypeTraitsLib;
 using System.Collections.Immutable;
+using System.Text;
 
 namespace FrayedKnotTests
 {
@@ -29,7 +30,7 @@ namespace FrayedKnotTests
         }
 
         [TestMethod]
-        public void TestMethod1()
+        public void TestLineIndexing()
         {
             Random rand = new Random(0x377E124F);
             int count = 1000;
@@ -95,6 +96,47 @@ namespace FrayedKnotTests
                 .ToImmutableList();
 
             Assert.AreEqual(0, errors.Count, $"Rope has newlines in the middle of lines: {string.Join(", ", errors.Take(5).Select(rec => $"({rec.Item1}: {rec.Item2.Quoted()})"))}");
+        }
+
+        private const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+        private static Rope CreateRandomCharRope(Random rand, int numberOfChars)
+        {
+            Rope result = Rope.Empty;
+            while(numberOfChars > 0)
+            {
+                int pass = Math.Min(numberOfChars, 192 + rand.Next(64));
+                StringBuilder sb = new StringBuilder(pass);
+                for (int i = 0; i < pass; ++i)
+                {
+                    sb.Append(alphabet[rand.Next(alphabet.Length)]);
+                }
+                result += sb.ToString();
+                numberOfChars -= pass;
+            }
+            return result;
+        }
+
+        [TestMethod]
+        public void TestComparison()
+        {
+            Random rand = new Random(0x377E124F);
+            int count = 1000;
+
+            ImmutableSortedSet<Rope> theSet = ImmutableSortedSet<Rope>.Empty;
+
+            for (int i = 0; i < count; ++i)
+            {
+                Rope r = CreateRandomCharRope(rand, 501 + rand.Next(500));
+                theSet = theSet.Add(r);
+            }
+
+            ImmutableList<(int, string, string)> failures = Enumerable.Range(0, theSet.Count - 1)
+                .Select(i => (i, theSet[i].ToString(), theSet[i + 1].ToString()))
+                .Where(rec => string.Compare(rec.Item2, rec.Item3, StringComparison.Ordinal) >= 0)
+                .ToImmutableList();
+
+            Assert.AreEqual(0, failures.Count, $"Ropes are not sorted: {string.Join(", ", failures.Take(5).Select(rec => $"({rec.Item1}: {rec.Item2.Quoted()} < {rec.Item3.Quoted()})"))}");
         }
     }
 }
