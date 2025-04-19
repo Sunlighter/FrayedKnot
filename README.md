@@ -1,8 +1,10 @@
-<!-- -*- coding: utf-8; fill-column: 118 -*- -->
+﻿<!-- -*- coding: utf-8; fill-column: 118 -*- -->
 
 # FrayedKnot
 
-An implementation of a Rope data structure for large string manipulation
+An implementation of a Rope data structure for large string manipulation.
+
+This library is available on NuGet.org as **Sunlighter.FrayedKnot**.
 
 ## Purpose and Features
 
