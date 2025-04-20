@@ -14,7 +14,7 @@ namespace FrayedKnotTests
 
             Rope r1 = Rope.Empty;
 
-            foreach (int i in Enumerable.Range(0, 1000))
+            foreach (int i in Enumerable.Range(0, numberOfLines))
             {
                 int len = rand.Next(80) + 1;
                 string s0 = new string('-', len) + theNewlines[rand.Next(theNewlines.Length)];
@@ -137,6 +137,51 @@ namespace FrayedKnotTests
                 .ToImmutableList();
 
             Assert.AreEqual(0, failures.Count, $"Ropes are not sorted: {string.Join(", ", failures.Take(5).Select(rec => $"({rec.Item1}: {rec.Item2.Quoted()} < {rec.Item3.Quoted()})"))}");
+        }
+
+        [TestMethod]
+        public void TestLineIndexing2()
+        {
+            Random rand = new Random(0x377E124F);
+            int count = 5000;
+            Rope r = CreateTestRope(rand, count);
+
+            ImmutableSortedDictionary<int, (int, int, int)> results = ImmutableSortedDictionary<int, (int, int, int)>.Empty;
+
+            for (int i = 0; i < 1000; ++i)
+            {
+                int randomCharOffset = rand.Next(r.Length);
+                int lineNumberForOffset = r.LineNumberForOffset(randomCharOffset);
+                int charOffsetForLine = r.LineOffset(lineNumberForOffset);
+                int charOffsetForNextLine = r.LineOffset(lineNumberForOffset + 1);
+
+                Assert.IsTrue(charOffsetForLine <= randomCharOffset, $"Line offset {charOffsetForLine} for lineNumber {lineNumberForOffset} is greater than random char offset {randomCharOffset}.");
+                Assert.IsTrue(randomCharOffset < charOffsetForNextLine, $"Random char offset {randomCharOffset} is greater than lineNumber offset {charOffsetForNextLine} for lineNumber {lineNumberForOffset + 1}.");
+
+                results = results.Add(randomCharOffset, (lineNumberForOffset, charOffsetForLine, charOffsetForNextLine));
+            }
+        }
+
+        [TestMethod]
+        public void TestLineIndexing3()
+        {
+            Random rand = new Random(0x2B1F3987);
+            int count = 5000;
+            Rope r = CreateTestRope(rand, count);
+
+            for (int i = 0; i < 1000; ++i)
+            {
+                int lineNumber = rand.Next(r.LineCount);
+                int offset = r.LineOffset(lineNumber);
+                int lineNumberForOffset = r.LineNumberForOffset(offset);
+
+                Assert.AreEqual(lineNumber, lineNumberForOffset, $"Fail: lineNumber = {lineNumber}, offset = {offset}, lineNumberForOffset = {lineNumberForOffset}");
+
+                int offsetNext = r.LineOffset(lineNumber + 1);
+                int lineNumberForOffsetNext = r.LineNumberForOffset(offsetNext - 1);
+
+                Assert.AreEqual(lineNumber, lineNumberForOffsetNext, $"Fail: lineNumber = {lineNumber}, offset = {offset}, offsetNext = {offsetNext}, lineNumberForOffsetNext = {lineNumberForOffsetNext}");
+            }
         }
     }
 }

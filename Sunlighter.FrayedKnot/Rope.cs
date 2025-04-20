@@ -787,8 +787,75 @@ namespace Sunlighter.FrayedKnot
             return -1;
         }
 
+        private static int LineNumberForOffset(NonEmptyNode root, int charOffset)
+        {
+            NodeInfo taken = NodeInfo.Zero;
+            ImmutableStack<NonEmptyNode> untaken = ImmutableStack<NonEmptyNode>.Empty.Push(root);
+
+            while (!untaken.IsEmpty && charOffset > taken.Length)
+            {
+                NonEmptyNode n = untaken.Peek();
+                NodeInfo pastN = taken + n.NodeInfo;
+
+                if (charOffset > pastN.Length)
+                {
+                    taken = pastN;
+                    untaken = untaken.Pop();
+                }
+                else if (n is LeafNode leaf)
+                {
+                    untaken = untaken.Pop();
+                    string str = leaf.Value;
+                    int charsToGo = charOffset - taken.Length;
+
+                    // if str[charsToGo] exists, we are asking what line str[charsToGo] is in.
+                    if (charsToGo > 0 && str[charsToGo - 1] == '\r')
+                    {
+                        if (charsToGo < str.Length)
+                        {
+                            if (str[charsToGo] == '\n')
+                            {
+                                --charsToGo; // the newline characters are considered part of the line, so hide the '\r'
+                            }
+                        }
+                        else if (!untaken.IsEmpty && untaken.Peek().NodeInfo.StartsWithNewline)
+                        {
+                            --charsToGo;
+                        }
+                    }
+
+                    System.Diagnostics.Debug.Assert(charsToGo <= str.Length);
+
+                    if (charsToGo < str.Length)
+                    {
+                        str = str.Substring(0, charsToGo);
+                    }
+
+                    NodeInfo partialLeafInfo = GetNodeInfo(str);
+                    NodeInfo total = taken + partialLeafInfo;
+
+                    return total.NewlineCount;
+                }
+                else if (n is TwoNode two)
+                {
+                    untaken = untaken.Pop().Push(two.Right).Push(two.Left);
+                }
+                else if (n is ThreeNode three)
+                {
+                    untaken = untaken.Pop().Push(three.Right).Push(three.Middle).Push(three.Left);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Internal error: Invalid node type");
+                }
+            }
+
+            //System.Diagnostics.Debug.Assert(false);
+            return -1;
+        }
+
         /// <summary>
-        /// Returns the character offset of the start of the specified line, or -1 if the line does not exist.
+        /// Returns the character offset of the start of the specified (zero-based) line, or -1 if the line does not exist.
         /// </summary>
 
         public int LineOffset(int line)
@@ -806,6 +873,24 @@ namespace Sunlighter.FrayedKnot
             else
             {
                 return LineOffset((NonEmptyNode)root, line);
+            }
+        }
+
+        /// <summary>
+        /// Returns the (zero-based) line number for the specified character offset, or -1 if the offset is invalid.
+        /// </summary>
+        public int LineNumberForOffset(int charOffset)
+        {
+            if (charOffset < 0) throw new ArgumentException($"{nameof(charOffset)} cannot be negative", nameof(charOffset));
+
+            if (charOffset == 0) return 0;
+            else if (root is EmptyNode)
+            {
+                return -1;
+            }
+            else
+            {
+                return LineNumberForOffset((NonEmptyNode)root, charOffset);
             }
         }
 
