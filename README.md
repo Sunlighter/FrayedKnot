@@ -1,4 +1,4 @@
-﻿<!-- -*- coding: utf-8; fill-column: 118 -*- -->
+<!-- -*- coding: utf-8; fill-column: 118 -*- -->
 
 # FrayedKnot
 
@@ -22,6 +22,10 @@ find a line by its line number.
 Ropes are equatable and comparable (internally using `System.StringComparison.Ordinal`). This is provided by an
 implementation of `ITypeTraits<Rope>` which works with the `Sunlighter.TypeTraitsLib` library. The type traits also
 provide binary serialization, consistent with the traits for other types.
+
+**Note:** If you are using the new Builder in the Type Traits library, you should use the
+`Builder.Instance.AddTypeTraits` function to add the value of the `Rope.TypeTraits` property to the Builder before
+building anything. This will allow the builder to build type traits for types containing Ropes.
 
 There are utility functions in a static `RopeUtility` class to read a `Rope` from a `System.IO.TextReader` or a file,
 or to write a rope to a `System.IO.TextWriter` or a file.
