@@ -1,5 +1,6 @@
 ﻿using Sunlighter.FrayedKnot;
 using Sunlighter.TypeTraitsLib;
+using Sunlighter.TypeTraitsLib.Building;
 using System.Collections.Immutable;
 using System.Text;
 
@@ -182,6 +183,31 @@ namespace FrayedKnotTests
 
                 Assert.AreEqual(lineNumber, lineNumberForOffsetNext, $"Fail: lineNumber = {lineNumber}, offset = {offset}, offsetNext = {offsetNext}, lineNumberForOffsetNext = {lineNumberForOffsetNext}");
             }
+        }
+
+        [TestMethod]
+        public void TestComparison2()
+        {
+            Random rand = new Random(0x377E124F);
+            int countPerSet = 10;
+            int numberOfSets = 100;
+
+            Adapter<ImmutableSortedSet<Rope>> a = Builder.Instance.GetAdapter<ImmutableSortedSet<Rope>>();
+
+            ImmutableSortedSet<ImmutableSortedSet<Rope>> hyperSet = ImmutableSortedSet<ImmutableSortedSet<Rope>>.Empty.WithComparer(a);
+
+            for (int i = 0; i < numberOfSets; ++i)
+            {
+                ImmutableSortedSet<Rope> theSet = ImmutableSortedSet<Rope>.Empty;
+                for (int j = 0; j < countPerSet; ++j)
+                {
+                    Rope r = CreateRandomCharRope(rand, 501 + rand.Next(500));
+                    theSet = theSet.Add(r);
+                }
+                hyperSet = hyperSet.Add(theSet);
+            }
+
+            Assert.AreEqual(numberOfSets, hyperSet.Count, "Hyper set should contain the expected number of sets.");
         }
     }
 }

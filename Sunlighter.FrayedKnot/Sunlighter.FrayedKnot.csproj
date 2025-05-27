@@ -15,9 +15,9 @@
     <PackageProjectUrl>https://github.com/Sunlighter/FrayedKnot</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <AssemblyVersion>1.0.3</AssemblyVersion>
-    <FileVersion>1.0.3</FileVersion>
-    <Version>1.0.3</Version>
+    <AssemblyVersion>1.0.4</AssemblyVersion>
+    <FileVersion>1.0.4</FileVersion>
+    <Version>1.0.4</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
@@ -34,7 +34,7 @@
 
   <ItemGroup>
     <PackageReference Include="Sunlighter.OptionLib" Version="1.0.2" />
-    <PackageReference Include="Sunlighter.TypeTraitsLib" Version="1.1.1" />
+    <PackageReference Include="Sunlighter.TypeTraitsLib" Version="1.1.2" />
   </ItemGroup>
 
 </Project>

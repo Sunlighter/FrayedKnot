@@ -9,8 +9,8 @@ This library is available on NuGet.org as **Sunlighter.FrayedKnot**.
 ## Purpose and Features
 
 This library presents a class called `Rope`. It's designed for quick manipulation of relatively large volumes of text,
-especially when such manipulation consists of splitting and concatenation, which it can do in logarithmic time. It
-uses `char` as its character type.
+especially when such manipulation consists of splitting and concatenation, which the `Rope` can do in logarithmic
+time. It uses `char` as its character type.
 
 Ropes are immutable and based internally on balanced trees. The leaves of the tree contain short strings, rather than
 individual characters.
@@ -23,9 +23,9 @@ Ropes are equatable and comparable (internally using `System.StringComparison.Or
 implementation of `ITypeTraits<Rope>` which works with the `Sunlighter.TypeTraitsLib` library. The type traits also
 provide binary serialization, consistent with the traits for other types.
 
-**Note:** If you are using the new Builder in the Type Traits library, you should use the
-`Builder.Instance.AddTypeTraits` function to add the value of the `Rope.TypeTraits` property to the Builder before
-building anything. This will allow the builder to build type traits for types containing Ropes.
+**Note:** It used to be necessary to use `Builder.Instance.AddTypeTraits` to register the rope&rsquo;s type traits
+with the Type Traits library&rsquo;s builder, but since version 1.0.4, Sunlighter.TypeTraitsLib 1.1.2 is now used, and
+the `Rope` class has a `ProvidesOwnTypeTraits` attribute, and registration is no longer necessary.
 
 There are utility functions in a static `RopeUtility` class to read a `Rope` from a `System.IO.TextReader` or a file,
 or to write a rope to a `System.IO.TextWriter` or a file.

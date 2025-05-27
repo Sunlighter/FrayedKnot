@@ -1,4 +1,5 @@
 ﻿using Sunlighter.TypeTraitsLib;
+using Sunlighter.TypeTraitsLib.Building;
 using System.Collections.Immutable;
 using System.Text;
 
@@ -7,6 +8,7 @@ namespace Sunlighter.FrayedKnot
     /// <summary>
     /// A Rope is a data structure that represents a string as a balanced tree of smaller strings. It is used to efficiently manipulate large strings.
     /// </summary>
+    [ProvidesOwnTypeTraits]
     public sealed class Rope : IEquatable<Rope>, IComparable<Rope>
     {
         private const int MinLeafSize = 32;
