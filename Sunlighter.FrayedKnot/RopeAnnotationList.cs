@@ -805,6 +805,62 @@ namespace Sunlighter.FrayedKnot
         }
 
         /// <summary>
+        /// Inserts space at the given position.
+        /// </summary>
+        /// <param name="pos">The position at which to do the insertion.</param>
+        /// <param name="insertionMode">Controls whether the space is inserted before or after any items at the insertion position.</param>
+        /// <param name="space">The amount of space to insert.</param>
+        /// <returns>The new annotation list.</returns>
+        public RopeAnnotationList<T> InsertSpaceAt(int pos, InsertionMode insertionMode, int space)
+        {
+            if (pos < 0) throw new ArgumentOutOfRangeException(nameof(pos), "Position cannot be negative.");
+            if (space < 0) throw new ArgumentOutOfRangeException(nameof(space), "Space cannot be negative.");
+            if (pos > Length)
+            {
+                return this + Space(pos - Length) + Space(space);
+            }
+            else
+            {
+                BoundType boundType = (insertionMode == InsertionMode.BeforeExisting) ? BoundType.Exclusive : BoundType.Inclusive;
+                var left = this.TakePositions(pos, boundType);
+                var right = this.SkipPositions(pos, boundType);
+                var middle = RopeAnnotationList<T>.Space(space);
+                return left + middle + right;
+            }
+        }
+
+        /// <summary>
+        /// Deletes all annotations and space within a given range.
+        /// </summary>
+        /// <param name="startPos">The start position of the range.</param>
+        /// <param name="startBoundType">Whether to include (in deletion) or exclude (from deletion) items exactly at the start position.</param>
+        /// <param name="length">The length of the range.</param>
+        /// <param name="endBoundType">Whether to include (in deletion) or exclude (from deletion) items exactly at the end position.</param>
+        /// <returns>The new annotation list.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public RopeAnnotationList<T> DeleteRange(int startPos, BoundType startBoundType, int length, BoundType endBoundType)
+        {
+            if (startPos < 0) throw new ArgumentOutOfRangeException(nameof(startPos), "Start position cannot be negative.");
+            if (length < 0) throw new ArgumentOutOfRangeException(nameof(length), "Length cannot be negative.");
+            if ((long)startPos + (long)length > int.MaxValue)
+            {
+                throw new ArgumentOutOfRangeException(nameof(length), "The sum of start position and length cannot exceed Int32.MaxValue.");
+            }
+            int endPos = startPos + length;
+            if (endPos > Length)
+            {
+                int realLength = Length - startPos;
+
+                return TakePositions(startPos, startBoundType == BoundType.Exclusive ? BoundType.Inclusive : BoundType.Exclusive);
+            }
+            else
+            {
+                return TakePositions(startPos, startBoundType == BoundType.Exclusive ? BoundType.Inclusive : BoundType.Exclusive)
+                    + SkipPositions(endPos, endBoundType);
+            }
+        }
+
+        /// <summary>
         /// Deletes all annotations within a given range, without removing any space.
         /// </summary>
         /// <param name="startPos">The start position of the range.</param>
