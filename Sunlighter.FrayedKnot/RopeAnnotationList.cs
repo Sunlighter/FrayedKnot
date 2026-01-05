@@ -116,7 +116,7 @@ namespace Sunlighter.FrayedKnot
             private readonly NonEmptyNode left;
             private readonly NonEmptyNode right;
             private readonly NodeInfo info;
-            private int height;
+            private readonly int height;
 
             public TwoNode(NonEmptyNode left, NonEmptyNode right)
             {
@@ -616,7 +616,7 @@ namespace Sunlighter.FrayedKnot
             }
             else
             {
-                (ImmutableStack<NonEmptyNode> taken, ImmutableStack<NonEmptyNode> untaken) =
+                (ImmutableStack<NonEmptyNode> _, ImmutableStack<NonEmptyNode> untaken) =
                     SplitByCount((NonEmptyNode)root, itemCount);
 
                 if (untaken.IsEmpty) return this;
@@ -664,7 +664,7 @@ namespace Sunlighter.FrayedKnot
             }
             else
             {
-                (ImmutableStack<NonEmptyNode> taken, ImmutableStack<NonEmptyNode> untaken) =
+                (ImmutableStack<NonEmptyNode> taken, ImmutableStack<NonEmptyNode> _) =
                     SplitByCount((NonEmptyNode)root, itemCount);
 
                 if (taken.IsEmpty) return empty;
@@ -690,6 +690,77 @@ namespace Sunlighter.FrayedKnot
                     }
                 }
                 return new RopeAnnotationList<T>(result, 0);
+            }
+        }
+
+        /// <summary>
+        /// Represents an item with its offset.
+        /// </summary>
+        public sealed class ItemWithOffset
+        {
+            private readonly int offset;
+            private readonly T item;
+
+            /// <summary>
+            /// Constructs a representation of an item with its offset.
+            /// </summary>
+            /// <param name="offset"></param>
+            /// <param name="item"></param>
+            public ItemWithOffset(int offset, T item)
+            {
+                this.offset = offset;
+                this.item = item;
+            }
+
+            /// <summary>
+            /// The offset of the item.
+            /// </summary>
+            public int Offset => offset;
+
+            /// <summary>
+            /// The item itself.
+            /// </summary>
+            public T Item => item;
+        }
+
+        /// <summary>
+        /// Returns an enumerable of the items in this Rope Annotation List, along with their offsets.
+        /// </summary>
+        public IEnumerable<ItemWithOffset> EnumerateItemsWithOffsets()
+        {
+            if (root is EmptyNode)
+            {
+                yield break;
+            }
+            else
+            {
+                ImmutableStack<NonEmptyNode> toVisit = ImmutableStack<NonEmptyNode>.Empty.Push((NonEmptyNode)root);
+                int offset = 0;
+                while(true)
+                {
+                    NonEmptyNode n = toVisit.Peek();
+                    toVisit = toVisit.Pop();
+                    if (n is Leaf leaf)
+                    {
+                        offset += leaf.SpaceBefore;
+                        yield return new ItemWithOffset(offset, leaf.Item);
+                    }
+                    else if (n is TwoNode twoNode)
+                    {
+                        toVisit = toVisit.Push(twoNode.Right);
+                        toVisit = toVisit.Push(twoNode.Left);
+                    }
+                    else if (n is ThreeNode threeNode)
+                    {
+                        toVisit = toVisit.Push(threeNode.Right);
+                        toVisit = toVisit.Push(threeNode.Middle);
+                        toVisit = toVisit.Push(threeNode.Left);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Internal error: Unknown NonEmptyNode type");
+                    }
+                }
             }
         }
 
