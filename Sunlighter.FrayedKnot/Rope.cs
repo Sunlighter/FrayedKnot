@@ -6,7 +6,7 @@ using System.Text;
 namespace Sunlighter.FrayedKnot
 {
     /// <summary>
-    /// A Rope is a data structure that represents a string as a balanced tree of smaller strings. It is used to efficiently manipulate large strings.
+    /// A Rope is an immutable data structure that represents a string as a balanced tree of smaller strings. It is used to efficiently manipulate large strings.
     /// </summary>
     [ProvidesOwnTypeTraits]
     public sealed class Rope : IEquatable<Rope>, IComparable<Rope>
@@ -1166,7 +1166,18 @@ namespace Sunlighter.FrayedKnot
                 }
             }
 
-            public bool CanSerialize(Rope a) => true;
+            public void CheckAnalogous(AnalogyTracker tr, Rope a, Rope b)
+            {
+                if (Compare(a, b) != 0)
+                {
+                    tr.SetNonAnalogous();
+                }
+            }
+
+            public void CheckSerializability(SerializabilityTracker tracker, Rope a)
+            {
+                // do nothing; always serializable
+            }
 
 
             public void Serialize(Serializer dest, Rope a)
@@ -1212,6 +1223,8 @@ namespace Sunlighter.FrayedKnot
                     StringTypeTraits.Value.MeasureBytes(measurer, aPrefix);
                 }
             }
+
+            public Rope Clone(CloneTracker tracker, Rope a) => a;
 
             public void AppendDebugString(DebugStringBuilder sb, Rope a)
             {

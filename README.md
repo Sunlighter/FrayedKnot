@@ -16,8 +16,8 @@ Ropes are immutable and based internally on balanced trees. The leaves of the tr
 individual characters.
 
 This particular implementation is also indexed on newlines. The implementation considers `"\r"` or `"\n"` or `"\r\n"`
-as a newline. Every node in the tree knows how many newline characters are under it, making it possible to quickly
-find a line by its line number.
+as a newline. Every node in the tree knows how many newlines are under it, making it possible to quickly find a line
+by its line number.
 
 Ropes are equatable and comparable (internally using `System.StringComparison.Ordinal`). This is provided by an
 implementation of `ITypeTraits<Rope>` which works with the `Sunlighter.TypeTraitsLib` library. The type traits also
