@@ -166,6 +166,16 @@ namespace Sunlighter.FrayedKnot
             public override int Height => height;
         }
 
+        /// <summary>
+        /// Returns the length of this Rope Annotation List (which is the amount of space in it).
+        /// </summary>
+        public int Length => (root is NonEmptyNode nonEmpty) ? (nonEmpty.Info.Length + trailingSpace) : trailingSpace;
+
+        /// <summary>
+        /// Returns the number of annotations in this Rope Annotation List.
+        /// </summary>
+        public int Count => (root is NonEmptyNode nonEmpty) ? nonEmpty.Info.Count : 0;
+
         private abstract class ConcatResult
         {
 
@@ -310,16 +320,6 @@ namespace Sunlighter.FrayedKnot
                 }
             }
         }
-
-        /// <summary>
-        /// Returns the length of this Rope Annotation List (which is the amount of space in it).
-        /// </summary>
-        public int Length => (root is NonEmptyNode nonEmpty) ? (nonEmpty.Info.Length + trailingSpace) : trailingSpace;
-
-        /// <summary>
-        /// Returns the number of annotations in this Rope Annotation List.
-        /// </summary>
-        public int Count => (root is NonEmptyNode nonEmpty) ? nonEmpty.Info.Count : 0;
 
         /// <summary>
         /// Concatenates two Rope Annotation Lists.
