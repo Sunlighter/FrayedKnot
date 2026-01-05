@@ -1,7 +1,6 @@
 ﻿using Sunlighter.TypeTraitsLib;
 using Sunlighter.TypeTraitsLib.Building;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Sunlighter.FrayedKnot
 {
