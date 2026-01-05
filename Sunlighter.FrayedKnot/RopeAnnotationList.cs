@@ -366,5 +366,197 @@ namespace Sunlighter.FrayedKnot
                 }
             }
         }
+
+        private static (ImmutableStack<NonEmptyNode>, int, ImmutableStack<NonEmptyNode>, int) Split(NonEmptyNode root, int spaceAfterRoot, int charCount, bool isInclusiveBound)
+        {
+            ImmutableStack<NonEmptyNode> taken = ImmutableStack<NonEmptyNode>.Empty;
+            ImmutableStack<NonEmptyNode> untaken = ImmutableStack<NonEmptyNode>.Empty.Push(root);
+
+            while (true)
+            {
+                if (untaken.IsEmpty)
+                {
+                    int takenSpace = Math.Max(charCount, spaceAfterRoot);
+                    return (taken, takenSpace, untaken, spaceAfterRoot - takenSpace);
+                }
+                else if (untaken.Peek().Info.Length <= charCount)
+                {
+                    NonEmptyNode n = untaken.Peek();
+                    taken = taken.Push(n);
+                    untaken = untaken.Pop();
+                    charCount -= n.Info.Length;
+
+                    if (untaken.IsEmpty)
+                    {
+                        int takenSpace = Math.Max(charCount, spaceAfterRoot);
+
+                        return (taken, takenSpace, untaken, spaceAfterRoot - takenSpace);
+                    }
+                }
+                else
+                {
+                    NonEmptyNode node = untaken.Peek();
+                    untaken = untaken.Pop();
+                    if (node is Leaf leaf)
+                    {
+                        if (charCount < leaf.SpaceBefore)
+                        {
+                            untaken = untaken.Push(new Leaf(leaf.SpaceBefore - charCount, leaf.Item));
+                            return (taken, charCount, untaken, spaceAfterRoot);
+                        }
+                        else if (charCount == leaf.SpaceBefore)
+                        {
+                            if (isInclusiveBound)
+                            {
+                                taken = taken.Push(leaf);
+                                while(!untaken.IsEmpty && untaken.Peek() is Leaf nextLeaf && nextLeaf.SpaceBefore == 0)
+                                {
+                                    Leaf nl = (Leaf)untaken.Peek();
+                                    taken = taken.Push(nl);
+                                    untaken = untaken.Pop();
+                                }
+                                return (taken, 0, untaken, spaceAfterRoot);
+                            }
+                            else
+                            {
+                                untaken = untaken.Push(new Leaf(0, leaf.Item));
+                                return (taken, charCount, untaken, spaceAfterRoot);
+                            }
+                        }
+                        else
+                        {
+                            taken = taken.Push(leaf);
+                            charCount -= leaf.SpaceBefore;
+                        }
+                    }
+                    else if (node is TwoNode two)
+                    {
+                        untaken = untaken.Push(two.Right);
+                        untaken = untaken.Push(two.Left);
+                    }
+                    else if (node is ThreeNode three)
+                    {
+                        untaken = untaken.Push(three.Right);
+                        untaken = untaken.Push(three.Middle);
+                        untaken = untaken.Push(three.Left);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns a new Rope Annotation List created by skipping the first <paramref name="charCount"/> positions of this list.
+        /// </summary>
+        /// <param name="charCount">The number of positions to skip.</param>
+        /// <param name="isInclusiveBound">Whether to also skip the position at <paramref name="charCount"/>.</param>
+        public RopeAnnotationList<T> Skip(int charCount, bool isInclusiveBound)
+        {
+            if (charCount < 0) throw new ArgumentException($"{nameof(charCount)} cannot be negative", nameof(charCount));
+
+            if (charCount == 0) return this;
+            else if (charCount >= Length)
+            {
+                return empty;
+            }
+            else if (root is EmptyNode)
+            {
+                System.Diagnostics.Debug.Assert(trailingSpace >= charCount);
+                return new RopeAnnotationList<T>(EmptyNode.Value, trailingSpace - charCount);
+            }
+            else
+            {
+                (ImmutableStack<NonEmptyNode> _, int _, ImmutableStack<NonEmptyNode> untaken, int untakenSpace) = Split((NonEmptyNode)root, trailingSpace, charCount, isInclusiveBound);
+
+                if (untaken.IsEmpty)
+                {
+                    return new RopeAnnotationList<T>(EmptyNode.Value, untakenSpace);
+                }
+                else
+                {
+
+                }
+
+                NonEmptyNode result = untaken.Peek();
+                untaken = untaken.Pop();
+                while (!untaken.IsEmpty)
+                {
+                    NonEmptyNode n2 = untaken.Peek();
+                    untaken = untaken.Pop();
+                    ConcatResult cr = Concat(result, 0, n2);
+                    if (cr is ConcatResultOne cr1)
+                    {
+                        result = cr1.One;
+                    }
+                    else if (cr is ConcatResultTwo cr2)
+                    {
+                        result = new TwoNode(cr2.One, cr2.Two);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Internal error: Invalid concat result");
+                    }
+                }
+                return new RopeAnnotationList<T>(result, untakenSpace);
+            }
+        }
+
+        private static RopeAnnotationList<U>.NonEmptyNode MapNode<U>(NonEmptyNode node, Func<T, U> mapFunc)
+        {
+            if (node is Leaf leaf)
+            {
+                return new RopeAnnotationList<U>.Leaf(leaf.SpaceBefore, mapFunc(leaf.Item));
+            }
+            else if (node is TwoNode two)
+            {
+                return new RopeAnnotationList<U>.TwoNode
+                (
+                    MapNode(two.Left, mapFunc),
+                    MapNode(two.Right, mapFunc)
+                );
+            }
+            else if (node is ThreeNode three)
+            {
+                return new RopeAnnotationList<U>.ThreeNode
+                (
+                    MapNode(three.Left, mapFunc),
+                    MapNode(three.Middle, mapFunc),
+                    MapNode(three.Right, mapFunc)
+                );
+            }
+            else
+            {
+                throw new InvalidOperationException("Internal error: Unknown NonEmptyNode type");
+            }
+        }
+
+        /// <summary>
+        /// Apply a map function to every annotation in this list, returning a new list.
+        /// </summary>
+        /// <typeparam name="U">The type of the result of the map function.</typeparam>
+        /// <param name="mapFunc">The map function.</param>
+        /// <returns>The new list.</returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public RopeAnnotationList<U> Map<U>(Func<T, U> mapFunc)
+        {
+            if (root is EmptyNode)
+            {
+                if (trailingSpace == 0)
+                {
+                    return RopeAnnotationList<U>.Empty;
+                }
+                else
+                {
+                    return new RopeAnnotationList<U>(RopeAnnotationList<U>.EmptyNode.Value, trailingSpace);
+                }
+            }
+            else if (root is NonEmptyNode nonEmptyRoot)
+            {
+                return new RopeAnnotationList<U>(MapNode(nonEmptyRoot, mapFunc), this.trailingSpace);
+            }
+            else
+            {
+                throw new InvalidOperationException("Internal error: Unknown Node type");
+            }
+        }
     }
 }
