@@ -24,7 +24,7 @@ namespace FrayedKnotTests
                 {
                     s0 = string.Concat("--", s1, s0.AsSpan(2 + s1.Length));
                 }
-                r1 = r1 + s0;
+                r1 += s0;
             }
 
             return r1;
