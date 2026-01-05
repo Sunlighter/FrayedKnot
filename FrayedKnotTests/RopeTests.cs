@@ -7,7 +7,7 @@ using System.Text;
 namespace FrayedKnotTests
 {
     [TestClass]
-    public sealed class Test1
+    public sealed class RopeTests
     {
         private static Rope CreateTestRope(Random rand, int numberOfLines)
         {

@@ -367,7 +367,7 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
-        private static (ImmutableStack<NonEmptyNode>, int, ImmutableStack<NonEmptyNode>, int) Split(NonEmptyNode root, int spaceAfterRoot, int charCount, bool isInclusiveBound)
+        private static (ImmutableStack<NonEmptyNode>, int, ImmutableStack<NonEmptyNode>, int) SplitByPositions(NonEmptyNode root, int spaceAfterRoot, int charCount, BoundType boundType)
         {
             ImmutableStack<NonEmptyNode> taken = ImmutableStack<NonEmptyNode>.Empty;
             ImmutableStack<NonEmptyNode> untaken = ImmutableStack<NonEmptyNode>.Empty.Push(root);
@@ -406,7 +406,7 @@ namespace Sunlighter.FrayedKnot
                         }
                         else if (charCount == leaf.SpaceBefore)
                         {
-                            if (isInclusiveBound)
+                            if (boundType == BoundType.Inclusive)
                             {
                                 taken = taken.Push(leaf);
                                 while(!untaken.IsEmpty && untaken.Peek() is Leaf nextLeaf && nextLeaf.SpaceBefore == 0)
@@ -448,8 +448,8 @@ namespace Sunlighter.FrayedKnot
         /// Returns a new Rope Annotation List created by skipping the first <paramref name="charCount"/> positions of this list.
         /// </summary>
         /// <param name="charCount">The number of positions to skip.</param>
-        /// <param name="isInclusiveBound">Whether to also skip the position at <paramref name="charCount"/>.</param>
-        public RopeAnnotationList<T> Skip(int charCount, bool isInclusiveBound)
+        /// <param name="boundType">Specifies whether to also skip the position at <paramref name="charCount"/>.</param>
+        public RopeAnnotationList<T> SkipPositions(int charCount, BoundType boundType)
         {
             if (charCount < 0) throw new ArgumentException($"{nameof(charCount)} cannot be negative", nameof(charCount));
 
@@ -465,15 +465,12 @@ namespace Sunlighter.FrayedKnot
             }
             else
             {
-                (ImmutableStack<NonEmptyNode> _, int _, ImmutableStack<NonEmptyNode> untaken, int untakenSpace) = Split((NonEmptyNode)root, trailingSpace, charCount, isInclusiveBound);
+                (ImmutableStack<NonEmptyNode> _, int _, ImmutableStack<NonEmptyNode> untaken, int untakenSpace) =
+                    SplitByPositions((NonEmptyNode)root, trailingSpace, charCount, boundType);
 
                 if (untaken.IsEmpty)
                 {
                     return new RopeAnnotationList<T>(EmptyNode.Value, untakenSpace);
-                }
-                else
-                {
-
                 }
 
                 NonEmptyNode result = untaken.Peek();
@@ -497,6 +494,59 @@ namespace Sunlighter.FrayedKnot
                     }
                 }
                 return new RopeAnnotationList<T>(result, untakenSpace);
+            }
+        }
+
+        /// <summary>
+        /// Returns a new Rope Annotation List created by taking the first <paramref name="charCount"/> positions of this list.
+        /// </summary>
+        /// <param name="charCount">The number of positions to take.</param>
+        /// <param name="boundType">Specifies whether to also take the position at <paramref name="charCount"/>.</param>
+        public RopeAnnotationList<T> TakePositions(int charCount, BoundType boundType)
+        {
+            if (charCount < 0) throw new ArgumentException($"{nameof(charCount)} cannot be negative", nameof(charCount));
+
+            if (charCount == 0) return empty;
+            else if (charCount >= Length)
+            {
+                return this;
+            }
+            else if (root is EmptyNode)
+            {
+                System.Diagnostics.Debug.Assert(trailingSpace >= charCount);
+                return new RopeAnnotationList<T>(EmptyNode.Value, charCount);
+            }
+            else
+            {
+                (ImmutableStack<NonEmptyNode> taken, int takenSpace, ImmutableStack<NonEmptyNode> _, int _) =
+                    SplitByPositions((NonEmptyNode)root, trailingSpace, charCount, boundType);
+
+                if (taken.IsEmpty)
+                {
+                    return new RopeAnnotationList<T>(EmptyNode.Value, takenSpace);
+                }
+
+                NonEmptyNode result = taken.Peek();
+                taken = taken.Pop();
+                while (!taken.IsEmpty)
+                {
+                    NonEmptyNode n2 = taken.Peek();
+                    taken = taken.Pop();
+                    ConcatResult cr = Concat(n2, 0, result);
+                    if (cr is ConcatResultOne cr1)
+                    {
+                        result = cr1.One;
+                    }
+                    else if (cr is ConcatResultTwo cr2)
+                    {
+                        result = new TwoNode(cr2.One, cr2.Two);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Internal error: Invalid concat result");
+                    }
+                }
+                return new RopeAnnotationList<T>(result, takenSpace);
             }
         }
 
@@ -558,5 +608,21 @@ namespace Sunlighter.FrayedKnot
                 throw new InvalidOperationException("Internal error: Unknown Node type");
             }
         }
+    }
+
+    /// <summary>
+    /// Specifies whether a range bound is inclusive or exclusive.
+    /// </summary>
+    public enum BoundType
+    {
+        /// <summary>
+        /// Specifies that a range bound is exclusive.
+        /// </summary>
+        Exclusive,
+
+        /// <summary>
+        /// Specifies that a range bound is inclusive.
+        /// </summary>
+        Inclusive
     }
 }
