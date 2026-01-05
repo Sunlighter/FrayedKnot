@@ -1,6 +1,7 @@
 ﻿using Sunlighter.TypeTraitsLib;
 using Sunlighter.TypeTraitsLib.Building;
 using System.Collections.Immutable;
+using System.Numerics;
 
 namespace Sunlighter.FrayedKnot
 {
@@ -768,10 +769,10 @@ namespace Sunlighter.FrayedKnot
         /// Inserts an annotation at the given position.
         /// </summary>
         /// <param name="pos">The position at which to do the insertion.</param>
-        /// <param name="boundType">Controls whether item is inserted before or after other items at the same position.</param>
+        /// <param name="insertionMode">Controls whether item is inserted before or after existing items at the same position.</param>
         /// <param name="item">The item to be inserted.</param>
         /// <returns>The new annotation list.</returns>
-        public RopeAnnotationList<T> InsertItemAt(int pos, BoundType boundType, T item)
+        public RopeAnnotationList<T> InsertItemAt(int pos, InsertionMode insertionMode, T item)
         {
             if (pos < 0) throw new ArgumentOutOfRangeException(nameof(pos), "Position cannot be negative.");
             if (pos > Length)
@@ -780,6 +781,7 @@ namespace Sunlighter.FrayedKnot
             }
             else
             {
+                BoundType boundType = (insertionMode == InsertionMode.BeforeExisting) ? BoundType.Exclusive : BoundType.Inclusive;
                 var left = this.TakePositions(pos, boundType);
                 var right = this.SkipPositions(pos, boundType);
                 var middle = RopeAnnotationList<T>.Item(item);
@@ -791,7 +793,7 @@ namespace Sunlighter.FrayedKnot
         /// Deletes all annotations at the given position.
         /// </summary>
         /// <param name="pos">The position at which to do the deletion</param>
-        /// <returns></returns>
+        /// <returns>The new annotation list.</returns>
         public RopeAnnotationList<T> DeleteItemsAt(int pos)
         {
             if (pos < 0) throw new ArgumentOutOfRangeException(nameof(pos), "Position cannot be negative.");
@@ -800,6 +802,39 @@ namespace Sunlighter.FrayedKnot
             var left = this.TakePositions(pos, BoundType.Exclusive);
             var right = this.SkipPositions(pos, BoundType.Inclusive);
             return left + right;
+        }
+
+        /// <summary>
+        /// Deletes all annotations within a given range, without removing any space.
+        /// </summary>
+        /// <param name="startPos">The start position of the range.</param>
+        /// <param name="startBoundType">Whether to include (in deletion) or exclude (from deletion) items exactly at the start position.</param>
+        /// <param name="length">The length of the range.</param>
+        /// <param name="endBoundType">Whether to include (in deletion) or exclude (from deletion) items exactly at the end position.</param>
+        /// <returns>The new annotation list.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public RopeAnnotationList<T> ClearRange(int startPos, BoundType startBoundType, int length, BoundType endBoundType)
+        {
+            if (startPos < 0) throw new ArgumentOutOfRangeException(nameof(startPos), "Start position cannot be negative.");
+            if (length < 0) throw new ArgumentOutOfRangeException(nameof(length), "Length cannot be negative.");
+            if ((long)startPos + (long)length > int.MaxValue)
+            {
+                throw new ArgumentOutOfRangeException(nameof(length), "The sum of start position and length cannot exceed Int32.MaxValue.");
+            }
+            int endPos = startPos + length;
+            if (endPos > Length)
+            {
+                int realLength = Length - startPos;
+
+                return TakePositions(startPos, startBoundType == BoundType.Exclusive ? BoundType.Inclusive : BoundType.Exclusive)
+                    + Space(realLength);
+            }
+            else
+            {
+                return TakePositions(startPos, startBoundType == BoundType.Exclusive ? BoundType.Inclusive : BoundType.Exclusive)
+                    + Space(length)
+                    + SkipPositions(endPos, endBoundType);
+            }
         }
 
         private static RopeAnnotationList<U>.NonEmptyNode MapNode<U>(NonEmptyNode node, Func<T, U> mapFunc)
@@ -876,5 +911,21 @@ namespace Sunlighter.FrayedKnot
         /// Specifies that a range bound is inclusive. Inserts after other items at the same position.
         /// </summary>
         Inclusive
+    }
+
+    /// <summary>
+    /// Specifies whether to insert a new item before or after existing items at the same position.
+    /// </summary>
+    public enum InsertionMode
+    {
+        /// <summary>
+        /// Specifies that a new item should be inserted before other items at the same position.
+        /// </summary>
+        BeforeExisting,
+
+        /// <summary>
+        /// Specifies that a new item should be inserted after other items at the same position.
+        /// </summary>
+        AfterExisting
     }
 }
