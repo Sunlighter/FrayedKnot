@@ -764,6 +764,44 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
+        /// <summary>
+        /// Inserts an annotation at the given position.
+        /// </summary>
+        /// <param name="pos">The position at which to do the insertion.</param>
+        /// <param name="boundType">Controls whether item is inserted before or after other items at the same position.</param>
+        /// <param name="item">The item to be inserted.</param>
+        /// <returns>The new annotation list.</returns>
+        public RopeAnnotationList<T> InsertItemAt(int pos, BoundType boundType, T item)
+        {
+            if (pos < 0) throw new ArgumentOutOfRangeException(nameof(pos), "Position cannot be negative.");
+            if (pos > Length)
+            {
+                return this + Space(pos - Length) + Item(item);
+            }
+            else
+            {
+                var left = this.TakePositions(pos, boundType);
+                var right = this.SkipPositions(pos, boundType);
+                var middle = RopeAnnotationList<T>.Item(item);
+                return left + middle + right;
+            }
+        }
+
+        /// <summary>
+        /// Deletes all annotations at the given position.
+        /// </summary>
+        /// <param name="pos">The position at which to do the deletion</param>
+        /// <returns></returns>
+        public RopeAnnotationList<T> DeleteItemsAt(int pos)
+        {
+            if (pos < 0) throw new ArgumentOutOfRangeException(nameof(pos), "Position cannot be negative.");
+            if (pos > Length) return this;
+
+            var left = this.TakePositions(pos, BoundType.Exclusive);
+            var right = this.SkipPositions(pos, BoundType.Inclusive);
+            return left + right;
+        }
+
         private static RopeAnnotationList<U>.NonEmptyNode MapNode<U>(NonEmptyNode node, Func<T, U> mapFunc)
         {
             if (node is Leaf leaf)
@@ -830,12 +868,12 @@ namespace Sunlighter.FrayedKnot
     public enum BoundType
     {
         /// <summary>
-        /// Specifies that a range bound is exclusive.
+        /// Specifies that a range bound is exclusive. Inserts before other items at the same position.
         /// </summary>
         Exclusive,
 
         /// <summary>
-        /// Specifies that a range bound is inclusive.
+        /// Specifies that a range bound is inclusive. Inserts after other items at the same position.
         /// </summary>
         Inclusive
     }
