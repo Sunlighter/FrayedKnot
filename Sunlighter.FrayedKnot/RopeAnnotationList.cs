@@ -549,6 +549,150 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
+        private static (ImmutableStack<NonEmptyNode>, ImmutableStack<NonEmptyNode>) SplitByCount(NonEmptyNode root, int itemCount)
+        {
+            ImmutableStack<NonEmptyNode> taken = ImmutableStack<NonEmptyNode>.Empty;
+            ImmutableStack<NonEmptyNode> untaken = ImmutableStack<NonEmptyNode>.Empty.Push(root);
+
+            while (true)
+            {
+                if (untaken.IsEmpty || itemCount == 0)
+                {
+                    return (taken, untaken);
+                }
+                else if (untaken.Peek().Info.Count <= itemCount)
+                {
+                    NonEmptyNode n = untaken.Peek();
+                    taken = taken.Push(n);
+                    untaken = untaken.Pop();
+                    itemCount -= n.Info.Count;
+
+                    if (untaken.IsEmpty)
+                    {
+                        return (taken, untaken);
+                    }
+                }
+                else
+                {
+                    NonEmptyNode node = untaken.Peek();
+                    untaken = untaken.Pop();
+                    System.Diagnostics.Debug.Assert(node is not Leaf); // should have already been dealt with above
+
+                    if (node is TwoNode two)
+                    {
+                        untaken = untaken.Push(two.Right);
+                        untaken = untaken.Push(two.Left);
+                    }
+                    else if (node is ThreeNode three)
+                    {
+                        untaken = untaken.Push(three.Right);
+                        untaken = untaken.Push(three.Middle);
+                        untaken = untaken.Push(three.Left);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Internal error: Unknown NonEmptyNode type");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns a new Rope Annotation List created by skipping the first <paramref name="itemCount"/> items in this list.
+        /// </summary>
+        /// <param name="itemCount">The number of items to skip.</param>
+        public RopeAnnotationList<T> SkipItems(int itemCount)
+        {
+            if (itemCount < 0) throw new ArgumentException($"{nameof(itemCount)} cannot be negative", nameof(itemCount));
+
+            if (itemCount == 0) return this;
+            else if (itemCount >= Count)
+            {
+                return empty;
+            }
+            else if (root is EmptyNode)
+            {
+                return this;
+            }
+            else
+            {
+                (ImmutableStack<NonEmptyNode> taken, ImmutableStack<NonEmptyNode> untaken) =
+                    SplitByCount((NonEmptyNode)root, itemCount);
+
+                if (untaken.IsEmpty) return this;
+
+                NonEmptyNode result = untaken.Peek();
+                untaken = untaken.Pop();
+                while (!untaken.IsEmpty)
+                {
+                    NonEmptyNode n2 = untaken.Peek();
+                    untaken = untaken.Pop();
+                    ConcatResult cr = Concat(result, 0, n2);
+                    if (cr is ConcatResultOne cr1)
+                    {
+                        result = cr1.One;
+                    }
+                    else if (cr is ConcatResultTwo cr2)
+                    {
+                        result = new TwoNode(cr2.One, cr2.Two);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Internal error: Invalid concat result");
+                    }
+                }
+                return new RopeAnnotationList<T>(result, trailingSpace);
+            }
+        }
+
+        /// <summary>
+        /// Returns a new Rope Annotation List created by taking the first <paramref name="itemCount"/> items in this list.
+        /// </summary>
+        /// <param name="itemCount">The number of items to take.</param>
+        public RopeAnnotationList<T> TakeItems(int itemCount)
+        {
+            if (itemCount < 0) throw new ArgumentException($"{nameof(itemCount)} cannot be negative", nameof(itemCount));
+
+            if (itemCount == 0) return empty;
+            else if (itemCount > Count)
+            {
+                return this;
+            }
+            else if (itemCount == Count)
+            {
+                return new RopeAnnotationList<T>(root, 0);
+            }
+            else
+            {
+                (ImmutableStack<NonEmptyNode> taken, ImmutableStack<NonEmptyNode> untaken) =
+                    SplitByCount((NonEmptyNode)root, itemCount);
+
+                if (taken.IsEmpty) return empty;
+
+                NonEmptyNode result = taken.Peek();
+                taken = taken.Pop();
+                while (!taken.IsEmpty)
+                {
+                    NonEmptyNode n2 = taken.Peek();
+                    taken = taken.Pop();
+                    ConcatResult cr = Concat(n2, 0, result);
+                    if (cr is ConcatResultOne cr1)
+                    {
+                        result = cr1.One;
+                    }
+                    else if (cr is ConcatResultTwo cr2)
+                    {
+                        result = new TwoNode(cr2.One, cr2.Two);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Internal error: Invalid concat result");
+                    }
+                }
+                return new RopeAnnotationList<T>(result, 0);
+            }
+        }
+
         private static RopeAnnotationList<U>.NonEmptyNode MapNode<U>(NonEmptyNode node, Func<T, U> mapFunc)
         {
             if (node is Leaf leaf)
