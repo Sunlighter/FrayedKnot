@@ -210,7 +210,7 @@ namespace Sunlighter.FrayedKnot
 
         private static NonEmptyNode Concat(int leftSpace, NonEmptyNode right)
         {
-            System.Diagnostics.Debug.Assert(leftSpace >= 0);
+            System.Diagnostics.Debug.Assert(leftSpace >= 0, "leftSpace has to be at least zero.");
 
             if (leftSpace == 0)
             {
