@@ -37,7 +37,7 @@ namespace FrayedKnotTests
             int count = 1000;
             Rope r = CreateTestRope(rand, count);
 
-            bool hasNewlineCharsOnlyAtEnd(string str)
+            static bool hasNewlineCharsOnlyAtEnd(string str)
             {
                 int i = 0;
                 int iEnd = str.Length;
