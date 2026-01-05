@@ -851,11 +851,11 @@ namespace Sunlighter.FrayedKnot
             {
                 int realLength = Length - startPos;
 
-                return TakePositions(startPos, startBoundType == BoundType.Exclusive ? BoundType.Inclusive : BoundType.Exclusive);
+                return TakePositions(startPos, startBoundType.Invert());
             }
             else
             {
-                return TakePositions(startPos, startBoundType == BoundType.Exclusive ? BoundType.Inclusive : BoundType.Exclusive)
+                return TakePositions(startPos, startBoundType.Invert())
                     + SkipPositions(endPos, endBoundType);
             }
         }
@@ -882,12 +882,12 @@ namespace Sunlighter.FrayedKnot
             {
                 int realLength = Length - startPos;
 
-                return TakePositions(startPos, startBoundType == BoundType.Exclusive ? BoundType.Inclusive : BoundType.Exclusive)
+                return TakePositions(startPos, startBoundType.Invert())
                     + Space(realLength);
             }
             else
             {
-                return TakePositions(startPos, startBoundType == BoundType.Exclusive ? BoundType.Inclusive : BoundType.Exclusive)
+                return TakePositions(startPos, startBoundType.Invert())
                     + Space(length)
                     + SkipPositions(endPos, endBoundType);
             }
@@ -983,5 +983,18 @@ namespace Sunlighter.FrayedKnot
         /// Specifies that a new item should be inserted after other items at the same position.
         /// </summary>
         AfterExisting
+    }
+
+    public static partial class RopeUtility
+    {
+        /// <summary>
+        /// Switch a BoundType between Inclusive and Exclusive.
+        /// </summary>
+        /// <param name="bt">The BoundType to switch.</param>
+        /// <returns>The other BoundType value.</returns>
+        public static BoundType Invert(this BoundType bt)
+        {
+            return (bt == BoundType.Exclusive) ? BoundType.Inclusive : BoundType.Exclusive;
+        }
     }
 }

@@ -1292,7 +1292,7 @@ namespace Sunlighter.FrayedKnot
     /// <summary>
     /// Utility methods for working with Ropes.
     /// </summary>
-    public static class RopeUtility
+    public static partial class RopeUtility
     {
         private const int bufSize = 16384;
 
