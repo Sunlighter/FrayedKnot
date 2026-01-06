@@ -17,6 +17,7 @@ public class RopeAnnotationListTests
             RopeAnnotationList<int> ra2 = ra.InsertItemAt(index, InsertionMode.AfterExisting, i);
 
 #if false
+            // turn this on to run more thorough tests
             RopeAnnotationList<int> raPrefix = ra.TakePositions(index, BoundType.Exclusive);
             RopeAnnotationList<int> ra2Prefix = ra2.TakePositions(index, BoundType.Exclusive);
 
