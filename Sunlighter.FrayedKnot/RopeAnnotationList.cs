@@ -801,6 +801,44 @@ namespace Sunlighter.FrayedKnot
         }
 
         /// <summary>
+        /// Returns the last item in this annotation list, and its offset, if there is a last item.
+        /// </summary>
+        public Option<ItemWithOffset> TryGetLast()
+        {
+            if (root is EmptyNode)
+            {
+                return Option<ItemWithOffset>.None;
+            }
+            else
+            {
+                NonEmptyNode n = (NonEmptyNode)root;
+                int offset = 0;
+                while (true)
+                {
+                    if (n is Leaf leaf)
+                    {
+                        return Option<ItemWithOffset>.Some(new ItemWithOffset(offset + leaf.SpaceBefore, leaf.Item));
+                    }
+                    else if (n is TwoNode twoNode)
+                    {
+                        offset += twoNode.Left.Info.Length;
+                        n = twoNode.Right;
+
+                    }
+                    else if (n is ThreeNode threeNode)
+                    {
+                        offset += threeNode.Left.Info.Length + threeNode.Middle.Info.Length;
+                        n = threeNode.Right;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Internal error: Unknown NonEmptyNode type");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Inserts an annotation at the given position.
         /// </summary>
         /// <param name="pos">The position at which to do the insertion.</param>
