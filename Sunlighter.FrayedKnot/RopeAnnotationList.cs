@@ -1,4 +1,5 @@
-﻿using Sunlighter.TypeTraitsLib;
+﻿using Sunlighter.OptionLib;
+using Sunlighter.TypeTraitsLib;
 using Sunlighter.TypeTraitsLib.Building;
 using System.Collections.Immutable;
 using System.Numerics;
@@ -756,6 +757,40 @@ namespace Sunlighter.FrayedKnot
                         toVisit = toVisit.Push(threeNode.Right);
                         toVisit = toVisit.Push(threeNode.Middle);
                         toVisit = toVisit.Push(threeNode.Left);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Internal error: Unknown NonEmptyNode type");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns the first item in this annotation list, and its offset, if there is a first item.
+        /// </summary>
+        public Option<ItemWithOffset> TryGetFirst()
+        {
+            if (root is EmptyNode)
+            {
+                return Option<ItemWithOffset>.None;
+            }
+            else
+            {
+                NonEmptyNode n = (NonEmptyNode)root;
+                while (true)
+                {
+                    if (n is Leaf leaf)
+                    {
+                        return Option<ItemWithOffset>.Some(new ItemWithOffset(leaf.SpaceBefore, leaf.Item));
+                    }
+                    else if (n is TwoNode twoNode)
+                    {
+                        n = twoNode.Left;
+                    }
+                    else if (n is ThreeNode threeNode)
+                    {
+                        n = threeNode.Left;
                     }
                     else
                     {
