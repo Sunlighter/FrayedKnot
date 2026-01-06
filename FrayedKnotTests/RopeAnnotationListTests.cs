@@ -67,7 +67,6 @@ public class RopeAnnotationListTests
         Assert.AreEqual(space, ra.Length);
         Assert.AreEqual(itemCount, ra.Count);
 
-
         byte[] serialized = traits.SerializeToBytes(ra);
         Assert.AreEqual(serialized.Length, traits.MeasureAllBytes(ra), "Serialized length should be equal to measured bytes");
         RopeAnnotationList<int> deserialized = traits.DeserializeFromBytes(serialized);
