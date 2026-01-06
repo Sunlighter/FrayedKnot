@@ -2,7 +2,6 @@
 using Sunlighter.TypeTraitsLib;
 using Sunlighter.TypeTraitsLib.Building;
 using System.Collections.Immutable;
-using System.Numerics;
 
 namespace Sunlighter.FrayedKnot
 {
@@ -1214,12 +1213,181 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
+        private const byte S_EMPTY = 0;
+        private const byte S_NON_EMPTY = 255;
+        private const byte S_LEAF = 1;
+        private const byte S_TWO_NODE = 2;
+        private const byte S_THREE_NODE = 3;
+        private const byte S_EXISTING_NODE = 4;
+
+        private sealed class SerializationTracker
+        {
+            private readonly ITypeTraits<T> itemTypeTraits;
+            private uint nextId;
+            private readonly Dictionary<NonEmptyNode, uint> nodes;
+
+            public SerializationTracker(ITypeTraits<T> itemTypeTraits)
+            {
+                this.itemTypeTraits = itemTypeTraits;
+                nextId = 0u;
+                nodes = new Dictionary<NonEmptyNode, uint>(ReferenceEqualityComparer.Instance);
+            }
+
+            public void WriteNode(Serializer dest, NonEmptyNode n)
+            {
+                if (nodes.ContainsKey(n))
+                {
+                    dest.Writer.Write(S_EXISTING_NODE);
+                    UInt32TypeTraits.Value.Serialize(dest, nodes[n]);
+                }
+                else
+                {
+                    uint id = nextId;
+                    ++nextId;
+                    nodes[n] = id;
+
+                    if (n is Leaf leaf)
+                    {
+                        dest.Writer.Write(S_LEAF);
+                        Int32TypeTraits.Value.Serialize(dest, leaf.SpaceBefore);
+                        itemTypeTraits.Serialize(dest, leaf.Item);
+                    }
+                    else if (n is TwoNode twoNode)
+                    {
+                        dest.Writer.Write(S_TWO_NODE);
+                        WriteNode(dest, twoNode.Left);
+                        WriteNode(dest, twoNode.Right);
+
+                    }
+                    else if (n is ThreeNode threeNode)
+                    {
+                        dest.Writer.Write(S_THREE_NODE);
+                        WriteNode(dest, threeNode.Left);
+                        WriteNode(dest, threeNode.Middle);
+                        WriteNode(dest, threeNode.Right);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Internal error: Unknown NonEmptyNode type");
+                    }
+                }
+            }
+        }
+
+        private sealed class DeserializationTracker
+        {
+            private readonly ITypeTraits<T> itemTypeTraits;
+            private uint nextId;
+            private readonly Dictionary<uint, NonEmptyNode> nodes;
+
+            public DeserializationTracker(ITypeTraits<T> itemTypeTraits)
+            {
+                this.itemTypeTraits = itemTypeTraits;
+                nextId = 0u;
+                nodes = new Dictionary<uint, NonEmptyNode>();
+            }
+
+            public NonEmptyNode ReadNode(Deserializer src)
+            {
+                byte b = src.Reader.ReadByte();
+                if (b == S_EXISTING_NODE)
+                {
+                    uint key = UInt32TypeTraits.Value.Deserialize(src);
+                    return nodes[key];
+                }
+                else
+                {
+                    uint key = nextId;
+                    ++nextId;
+                    if (b == S_LEAF)
+                    {
+                        int spaceBefore = Int32TypeTraits.Value.Deserialize(src);
+                        T item = itemTypeTraits.Deserialize(src);
+                        Leaf leaf = new Leaf(spaceBefore, item);
+                        nodes[key] = leaf;
+                        return leaf;
+                    }
+                    else if (b == S_TWO_NODE)
+                    {
+                        NonEmptyNode left = ReadNode(src);
+                        NonEmptyNode right = ReadNode(src);
+                        TwoNode twoNode = new TwoNode(left, right);
+                        nodes[key] = twoNode;
+                        return twoNode;
+                    }
+                    else if (b == S_THREE_NODE)
+                    {
+                        NonEmptyNode left = ReadNode(src);
+                        NonEmptyNode middle = ReadNode(src);
+                        NonEmptyNode right = ReadNode(src);
+                        ThreeNode threeNode = new ThreeNode(left, middle, right);
+                        nodes[key] = threeNode;
+                        return threeNode;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Internal error: Unknown node type during deserialization");
+                    }
+                }
+            }
+        }
+
+        private sealed class MeasureBytesTracker
+        {
+            private readonly ITypeTraits<T> itemTypeTraits;
+            private readonly HashSet<NonEmptyNode> encounteredNodes;
+
+            public MeasureBytesTracker(ITypeTraits<T> itemTypeTraits)
+            {
+                this.itemTypeTraits = itemTypeTraits;
+                encounteredNodes = new HashSet<NonEmptyNode>(ReferenceEqualityComparer.Instance);
+            }
+
+            public void MeasureNode(ByteMeasurer m, NonEmptyNode n)
+            {
+                uint nodeId = (uint)System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(n);
+                if (encounteredNodes.Contains(n))
+                {
+                    m.AddBytes(1); // S_EXISTING_NODE
+                    UInt32TypeTraits.Value.MeasureBytes(m, nodeId);
+                }
+                else
+                {
+                    m.AddBytes(1); // S_LEAF / S_TWO_NODE / S_THREE_NODE
+                    encounteredNodes.Add(n);
+                    if (n is Leaf leaf)
+                    {
+                        Int32TypeTraits.Value.MeasureBytes(m, leaf.SpaceBefore);
+                        itemTypeTraits.MeasureBytes(m, leaf.Item);
+                    }
+                    else if (n is TwoNode twoNode)
+                    {
+                        MeasureNode(m, twoNode.Left);
+                        MeasureNode(m, twoNode.Right);
+                    }
+                    else if (n is ThreeNode threeNode)
+                    {
+                        MeasureNode(m, threeNode.Left);
+                        MeasureNode(m, threeNode.Middle);
+                        MeasureNode(m, threeNode.Right);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Internal error: Unknown NonEmptyNode type");
+                    }
+                }
+            }
+        }
+
+
         private sealed class RopeAnnotationListTypeTraits : ITypeTraits<RopeAnnotationList<T>>
         {
+            private readonly SerializerStateID ssid;
             private readonly ITypeTraits<T> itemTraits;
 
             public RopeAnnotationListTypeTraits(ITypeTraits<T> itemTraits)
             {
+                ssid = SerializerStateID.Next();
                 this.itemTraits = itemTraits;
             }
 
@@ -1352,24 +1520,79 @@ namespace Sunlighter.FrayedKnot
 
             public void Serialize(Serializer dest, RopeAnnotationList<T> a)
             {
-                throw new NotImplementedException();
+                if (a.root is EmptyNode)
+                {
+                    dest.Writer.Write(S_EMPTY);
+                }
+                else if (a.root is NonEmptyNode nonEmptyRoot)
+                {
+                    dest.Writer.Write(S_NON_EMPTY);
+                    SerializationTracker tracker = dest.GetSerializerState(ssid, () => new SerializationTracker(itemTraits));
+                    tracker.WriteNode(dest, nonEmptyRoot);
+                    Int32TypeTraits.Value.Serialize(dest, a.trailingSpace);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Internal error: Unknown Node type");
+                }
             }
 
             public RopeAnnotationList<T> Deserialize(Deserializer src)
             {
-                throw new NotImplementedException();
+                byte b = src.Reader.ReadByte();
+                if (b == S_EMPTY)
+                {
+                    return empty;
+                }
+                else if (b == S_NON_EMPTY)
+                {
+                    DeserializationTracker tracker = src.GetSerializerState(ssid, () => new DeserializationTracker(itemTraits));
+                    NonEmptyNode root = tracker.ReadNode(src);
+                    int trailingSpace = Int32TypeTraits.Value.Deserialize(src);
+                    return new RopeAnnotationList<T>(root, trailingSpace);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Internal error: Unknown RopeAnnotationList type during deserialization");
+                }
             }
 
             public void MeasureBytes(ByteMeasurer measurer, RopeAnnotationList<T> a)
             {
-                throw new NotImplementedException();
+                measurer.AddBytes(1); // S_EMPTY / S_NON_EMPTY
+                if (a.root is EmptyNode)
+                {
+                    // do nothing
+                }
+                else if (a.root is NonEmptyNode nonEmptyRoot)
+                {
+                    MeasureBytesTracker tracker = measurer.GetSerializerState(ssid, () => new MeasureBytesTracker(itemTraits));
+                    tracker.MeasureNode(measurer, nonEmptyRoot);
+                    Int32TypeTraits.Value.MeasureBytes(measurer, a.trailingSpace);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Internal error: Unknown Node type");
+                }
             }
 
             public RopeAnnotationList<T> Clone(CloneTracker tracker, RopeAnnotationList<T> a) => a;
 
             public void AppendDebugString(DebugStringBuilder sb, RopeAnnotationList<T> a)
             {
-                throw new NotImplementedException();
+                sb.Builder.Append('[');
+                bool needDelim = false;
+                foreach (var itemWithOffset in a.EnumerateItemsWithOffsets())
+                {
+                    if (needDelim) sb.Builder.Append(' ');
+                    needDelim = true;
+                    sb.Builder.Append('(');
+                    Int32TypeTraits.Value.AppendDebugString(sb, itemWithOffset.Offset);
+                    sb.Builder.Append(": ");
+                    itemTraits.AppendDebugString(sb, itemWithOffset.Item);
+                    sb.Builder.Append(')');
+                }
+                sb.Builder.Append(']');
             }
         }
 
