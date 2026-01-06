@@ -994,12 +994,12 @@ namespace Sunlighter.FrayedKnot
     public enum BoundType
     {
         /// <summary>
-        /// Specifies that a range bound is exclusive. Inserts before other items at the same position.
+        /// Specifies that a range bound is exclusive.
         /// </summary>
         Exclusive,
 
         /// <summary>
-        /// Specifies that a range bound is inclusive. Inserts after other items at the same position.
+        /// Specifies that a range bound is inclusive.
         /// </summary>
         Inclusive
     }
