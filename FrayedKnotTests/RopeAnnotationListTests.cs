@@ -23,7 +23,12 @@ public class RopeAnnotationListTests
     public void TestSerialization()
     {
         Random rand = new Random(0x60079F31);
-        RopeAnnotationList<int> ra = CreateTestRope(rand, 1000000, 10000);
+        const int space = 1000000;
+        const int itemCount = 10000;
+        RopeAnnotationList<int> ra = CreateTestRope(rand, space, itemCount);
+
+        Assert.AreEqual(space, ra.Length);
+        Assert.AreEqual(itemCount, ra.Count);
 
         ITypeTraits<RopeAnnotationList<int>> traits = Builder.Instance.GetTypeTraits<RopeAnnotationList<int>>();
 
