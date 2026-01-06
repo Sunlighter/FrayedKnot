@@ -213,7 +213,7 @@ namespace FrayedKnotTests
         [TestMethod]
         public void TestSerialization()
         {
-            Random rand = new Random(0x2B1F3987);
+            Random rand = new Random(0x348CBE3F);
             int count = 5000;
             Rope r = CreateTestRope(rand, count);
             ITypeTraits<ImmutableList<Rope>> ropeListTraits = Builder.Instance.GetTypeTraits<ImmutableList<Rope>>();
