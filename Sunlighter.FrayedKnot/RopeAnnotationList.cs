@@ -439,8 +439,8 @@ namespace Sunlighter.FrayedKnot
             }
             else if (root is EmptyNode)
             {
-                System.Diagnostics.Debug.Assert(trailingSpace >= charCount);
-                return new RopeAnnotationList<T>(EmptyNode.Value, trailingSpace - charCount);
+                int actualSkipped = Math.Min(charCount, trailingSpace);
+                return new RopeAnnotationList<T>(EmptyNode.Value, trailingSpace - actualSkipped);
             }
             else
             {
@@ -492,8 +492,8 @@ namespace Sunlighter.FrayedKnot
             }
             else if (root is EmptyNode)
             {
-                System.Diagnostics.Debug.Assert(trailingSpace >= charCount);
-                return new RopeAnnotationList<T>(EmptyNode.Value, charCount);
+                int actualTaken = Math.Min(charCount, trailingSpace);
+                return new RopeAnnotationList<T>(EmptyNode.Value, actualTaken);
             }
             else
             {
