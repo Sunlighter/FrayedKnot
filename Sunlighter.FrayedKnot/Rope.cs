@@ -1628,7 +1628,7 @@ namespace Sunlighter.FrayedKnot
 
         /// <summary>
         /// Indicates that the rope will be serialized in a structure-aware way so that structure sharing between multiple
-        /// ropes will be preserved.
+        /// ropes will be preserved (assuming they are serialized together).
         /// </summary>
         Nodes
     }
