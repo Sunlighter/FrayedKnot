@@ -376,69 +376,48 @@ namespace Sunlighter.FrayedKnot
             {
                 if (untaken.IsEmpty)
                 {
-                    int takenSpace = Math.Max(charCount, spaceAfterRoot);
+                    int takenSpace = Math.Min(charCount, spaceAfterRoot);
+                    //System.Diagnostics.Debug.WriteLine($"Untaken is empty");
+
                     return (taken, takenSpace, untaken, spaceAfterRoot - takenSpace);
-                }
-                else if (untaken.Peek().Info.Length <= charCount)
-                {
-                    NonEmptyNode n = untaken.Peek();
-                    taken = taken.Push(n);
-                    untaken = untaken.Pop();
-                    charCount -= n.Info.Length;
-
-                    if (untaken.IsEmpty)
-                    {
-                        int takenSpace = Math.Max(charCount, spaceAfterRoot);
-
-                        return (taken, takenSpace, untaken, spaceAfterRoot - takenSpace);
-                    }
                 }
                 else
                 {
-                    NonEmptyNode node = untaken.Peek();
-                    untaken = untaken.Pop();
-                    if (node is Leaf leaf)
+                    NonEmptyNode n = untaken.Peek();
+                    int nextLength = n.Info.Length;
+
+                    //System.Diagnostics.Debug.WriteLine($"{n.GetType().FullName}, charCount = {charCount}, nextLength = {nextLength}, count = {n.Info.Count}");
+
+                    if (nextLength < charCount || (boundType == BoundType.Inclusive && nextLength == charCount))
                     {
-                        if (charCount < leaf.SpaceBefore)
-                        {
-                            untaken = untaken.Push(new Leaf(leaf.SpaceBefore - charCount, leaf.Item));
-                            return (taken, charCount, untaken, spaceAfterRoot);
-                        }
-                        else if (charCount == leaf.SpaceBefore)
-                        {
-                            if (boundType == BoundType.Inclusive)
-                            {
-                                taken = taken.Push(leaf);
-                                while(!untaken.IsEmpty && untaken.Peek() is Leaf nextLeaf && nextLeaf.SpaceBefore == 0)
-                                {
-                                    Leaf nl = (Leaf)untaken.Peek();
-                                    taken = taken.Push(nl);
-                                    untaken = untaken.Pop();
-                                }
-                                return (taken, 0, untaken, spaceAfterRoot);
-                            }
-                            else
-                            {
-                                untaken = untaken.Push(new Leaf(0, leaf.Item));
-                                return (taken, charCount, untaken, spaceAfterRoot);
-                            }
-                        }
-                        else
-                        {
-                            taken = taken.Push(leaf);
-                            charCount -= leaf.SpaceBefore;
-                        }
+                        //System.Diagnostics.Debug.WriteLine($"Shifting entire {n.GetType().Name}");
+
+                        untaken = untaken.Pop();
+                        taken = taken.Push(n);
+                        charCount -= nextLength;
                     }
-                    else if (node is TwoNode two)
+                    else if (n is TwoNode twoNode)
                     {
-                        untaken = untaken.Push(two.Right);
-                        untaken = untaken.Push(two.Left);
+                        //System.Diagnostics.Debug.WriteLine("Breaking TwoNode");
+                        untaken = untaken.Pop();
+                        untaken = untaken.Push(twoNode.Right);
+                        untaken = untaken.Push(twoNode.Left);
                     }
-                    else if (node is ThreeNode three)
+                    else if (n is ThreeNode threeNode)
                     {
-                        untaken = untaken.Push(three.Right);
-                        untaken = untaken.Push(three.Middle);
-                        untaken = untaken.Push(three.Left);
+                        //System.Diagnostics.Debug.WriteLine("Breaking ThreeNode");
+                        untaken = untaken.Pop();
+                        untaken = untaken.Push(threeNode.Right);
+                        untaken = untaken.Push(threeNode.Middle);
+                        untaken = untaken.Push(threeNode.Left);
+                    }
+                    else if (n is Leaf leaf)
+                    {
+                        //System.Diagnostics.Debug.WriteLine("Breaking Leaf");
+                        untaken = untaken.Pop();
+                        untaken = untaken.Push(new Leaf(leaf.SpaceBefore - charCount, leaf.Item));
+
+                        return (taken, charCount, untaken, spaceAfterRoot);
                     }
                 }
             }
@@ -453,8 +432,8 @@ namespace Sunlighter.FrayedKnot
         {
             if (charCount < 0) throw new ArgumentException($"{nameof(charCount)} cannot be negative", nameof(charCount));
 
-            if (charCount == 0) return this;
-            else if (charCount >= Length)
+            if (charCount == 0 && boundType == BoundType.Exclusive) return this;
+            else if (charCount > Length || (charCount == Length && boundType == BoundType.Inclusive))
             {
                 return empty;
             }
@@ -506,8 +485,8 @@ namespace Sunlighter.FrayedKnot
         {
             if (charCount < 0) throw new ArgumentException($"{nameof(charCount)} cannot be negative", nameof(charCount));
 
-            if (charCount == 0) return empty;
-            else if (charCount >= Length)
+            if (charCount == 0 && boundType == BoundType.Exclusive) return empty;
+            else if (charCount > Length || (charCount == Length && boundType == BoundType.Inclusive))
             {
                 return this;
             }
@@ -737,7 +716,7 @@ namespace Sunlighter.FrayedKnot
             {
                 ImmutableStack<NonEmptyNode> toVisit = ImmutableStack<NonEmptyNode>.Empty.Push((NonEmptyNode)root);
                 int offset = 0;
-                while(true)
+                while(!toVisit.IsEmpty)
                 {
                     NonEmptyNode n = toVisit.Peek();
                     toVisit = toVisit.Pop();
@@ -856,6 +835,9 @@ namespace Sunlighter.FrayedKnot
                 BoundType boundType = (insertionMode == InsertionMode.BeforeExisting) ? BoundType.Exclusive : BoundType.Inclusive;
                 var left = this.TakePositions(pos, boundType);
                 var right = this.SkipPositions(pos, boundType);
+
+                System.Diagnostics.Debug.Assert(left.Count + right.Count == Count, "Items gained or lost");
+
                 var middle = RopeAnnotationList<T>.Item(item);
                 return left + middle + right;
             }
@@ -1602,6 +1584,9 @@ namespace Sunlighter.FrayedKnot
                     itemTraits.AppendDebugString(sb, itemWithOffset.Item);
                     sb.Builder.Append(')');
                 }
+                if (needDelim) sb.Builder.Append(' ');
+                sb.Builder.Append("trailing=");
+                Int32TypeTraits.Value.AppendDebugString(sb, a.trailingSpace);
                 sb.Builder.Append(']');
             }
         }
