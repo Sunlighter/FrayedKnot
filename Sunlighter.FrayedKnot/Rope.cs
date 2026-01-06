@@ -1029,7 +1029,7 @@ namespace Sunlighter.FrayedKnot
             }
         }
 
-        private class LeafReader
+        private sealed class LeafReader
         {
             private ImmutableStack<NonEmptyNode> nodeStack;
             private ImmutableStack<string> leafStack;
