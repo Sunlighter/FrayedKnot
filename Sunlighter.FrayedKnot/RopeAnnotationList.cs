@@ -1095,37 +1095,47 @@ namespace Sunlighter.FrayedKnot
 
             private void Normalize()
             {
+                if (stack.IsEmpty) return;
                 WalkerItem topItem = stack.Peek();
                 if (topItem is WalkerItem_Item || topItem is WalkerItem_Space)
                 {
                     return;
                 }
-                else if (topItem is WalkerItem_NonEmptyNode nonEmptyNodeItem)
+                else if (topItem is WalkerItem_NonEmptyNode)
                 {
-                    stack = stack.Pop();
-                    NonEmptyNode n = nonEmptyNodeItem.Node;
-                    if (n is Leaf leaf)
+                    while(true)
                     {
-                        stack = stack.Push(new WalkerItem_Item(leaf.Item));
-                        if (leaf.SpaceBefore > 0)
+                        topItem = stack.Peek();
+                        if (topItem is WalkerItem_NonEmptyNode nonEmptyNodeItem)
                         {
-                            stack = stack.Push(new WalkerItem_Space(leaf.SpaceBefore));
+                            stack = stack.Pop();
+                            NonEmptyNode n = nonEmptyNodeItem.Node;
+                            if (n is Leaf leaf)
+                            {
+                                stack = stack.Push(new WalkerItem_Item(leaf.Item));
+                                if (leaf.SpaceBefore > 0)
+                                {
+                                    stack = stack.Push(new WalkerItem_Space(leaf.SpaceBefore));
+                                }
+                                return;
+                            }
+                            else if (n is TwoNode two)
+                            {
+                                stack = stack.Push(new WalkerItem_NonEmptyNode(two.Right));
+                                stack = stack.Push(new WalkerItem_NonEmptyNode(two.Left));
+                            }
+                            else if (n is ThreeNode three)
+                            {
+                                stack = stack.Push(new WalkerItem_NonEmptyNode(three.Right));
+                                stack = stack.Push(new WalkerItem_NonEmptyNode(three.Middle));
+                                stack = stack.Push(new WalkerItem_NonEmptyNode(three.Left));
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException("Internal error: Unknown NonEmptyNode type");
+                            }
                         }
-                    }
-                    else if (n is TwoNode two)
-                    {
-                        stack = stack.Push(new WalkerItem_NonEmptyNode(two.Right));
-                        stack = stack.Push(new WalkerItem_NonEmptyNode(two.Left));
-                    }
-                    else if (n is ThreeNode three)
-                    {
-                        stack = stack.Push(new WalkerItem_NonEmptyNode(three.Right));
-                        stack = stack.Push(new WalkerItem_NonEmptyNode(three.Middle));
-                        stack = stack.Push(new WalkerItem_NonEmptyNode(three.Left));
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Internal error: Unknown NonEmptyNode type");
+                        else break;
                     }
                 }
                 else
@@ -1421,11 +1431,11 @@ namespace Sunlighter.FrayedKnot
                         }
                         else if (spaceA > 0)
                         {
-                            return -1;
+                            return 1;
                         }
                         else if (spaceB > 0)
                         {
-                            return 1;
+                            return -1;
                         }
                         else
                         {
