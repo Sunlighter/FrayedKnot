@@ -1024,6 +1024,364 @@ namespace Sunlighter.FrayedKnot
                 throw new InvalidOperationException("Internal error: Unknown Node type");
             }
         }
+
+        private abstract class WalkerItem
+        {
+
+        }
+
+        private sealed class WalkerItem_Space : WalkerItem
+        {
+            private readonly int amount;
+
+            public WalkerItem_Space(int amount)
+            {
+                this.amount = amount;
+            }
+
+            public int Amount => amount;
+        }
+
+        private sealed class WalkerItem_Item : WalkerItem
+        {
+            private readonly T item;
+
+            public WalkerItem_Item(T item)
+            {
+                this.item = item;
+            }
+
+            public T Item => item;
+        }
+
+        private sealed class WalkerItem_NonEmptyNode : WalkerItem
+        {
+            private readonly NonEmptyNode node;
+
+            public WalkerItem_NonEmptyNode(NonEmptyNode node)
+            {
+                this.node = node;
+            }
+
+            public NonEmptyNode Node => node;
+        }
+
+        private sealed class Walker
+        {
+            private ImmutableStack<WalkerItem> stack;
+
+            public Walker(RopeAnnotationList<T> list)
+            {
+                stack = ImmutableStack<WalkerItem>.Empty;
+                if (list.root is EmptyNode)
+                {
+                    if (list.trailingSpace > 0)
+                    {
+                        stack = stack.Push(new WalkerItem_Space(list.trailingSpace));
+                    }
+                }
+                else if (list.root is NonEmptyNode nonEmptyRoot)
+                {
+                    stack = stack.Push(new WalkerItem_NonEmptyNode(nonEmptyRoot));
+                    if (list.trailingSpace > 0)
+                    {
+                        stack = stack.Push(new WalkerItem_Space(list.trailingSpace));
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("Internal error: Unknown Node type");
+                }
+            }
+
+            private void Normalize()
+            {
+                WalkerItem topItem = stack.Peek();
+                if (topItem is WalkerItem_Item || topItem is WalkerItem_Space)
+                {
+                    return;
+                }
+                else if (topItem is WalkerItem_NonEmptyNode nonEmptyNodeItem)
+                {
+                    stack = stack.Pop();
+                    NonEmptyNode n = nonEmptyNodeItem.Node;
+                    if (n is Leaf leaf)
+                    {
+                        stack = stack.Push(new WalkerItem_Item(leaf.Item));
+                        if (leaf.SpaceBefore > 0)
+                        {
+                            stack = stack.Push(new WalkerItem_Space(leaf.SpaceBefore));
+                        }
+                    }
+                    else if (n is TwoNode two)
+                    {
+                        stack = stack.Push(new WalkerItem_NonEmptyNode(two.Right));
+                        stack = stack.Push(new WalkerItem_NonEmptyNode(two.Left));
+                    }
+                    else if (n is ThreeNode three)
+                    {
+                        stack = stack.Push(new WalkerItem_NonEmptyNode(three.Right));
+                        stack = stack.Push(new WalkerItem_NonEmptyNode(three.Middle));
+                        stack = stack.Push(new WalkerItem_NonEmptyNode(three.Left));
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Internal error: Unknown NonEmptyNode type");
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("Internal error: Unknown WalkerItem type");
+                }
+            }
+
+            public bool IsAtEof
+            {
+                get
+                {
+                    Normalize();
+                    return stack.IsEmpty;
+                }
+            }
+
+            public bool HasItem
+            {
+                get
+                {
+                    Normalize();
+                    return !stack.IsEmpty && stack.Peek() is WalkerItem_Item;
+                }
+            }
+
+            public T ReadItem()
+            {
+                Normalize();
+                if (stack.IsEmpty) throw new InvalidOperationException("Cannot read item at end of list");
+                if (stack.Peek() is WalkerItem_Item item)
+                {
+                    stack = stack.Pop();
+                    return item.Item;
+                }
+                else
+                {
+                    throw new InvalidOperationException("Cannot read item when next element is not an item");
+                }
+            }
+
+            public int SpaceAmount
+            {
+                get
+                {
+                    Normalize();
+                    if (stack.IsEmpty) return 0;
+                    if (stack.Peek() is WalkerItem_Space space)
+                    {
+                        return space.Amount;
+                    }
+                    else
+                    {
+                        return 0;
+                    }
+                }
+            }
+
+            public int ReadSpace(int amount)
+            {
+                Normalize();
+                if (stack.IsEmpty) throw new InvalidOperationException("Cannot read space at end of list");
+                if (stack.Peek() is WalkerItem_Space space)
+                {
+                    if (space.Amount < amount)
+                    {
+                        throw new InvalidOperationException("Cannot read more space than is available");
+                    }
+                    else if (space.Amount == amount)
+                    {
+                        stack = stack.Pop();
+                        return amount;
+                    }
+                    else
+                    {
+                        stack = stack.Pop();
+                        stack = stack.Push(new WalkerItem_Space(space.Amount - amount));
+                        return amount;
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("Cannot read space when next element is not space");
+                }
+            }
+        }
+
+        private sealed class RopeAnnotationListTypeTraits : ITypeTraits<RopeAnnotationList<T>>
+        {
+            private readonly ITypeTraits<T> itemTraits;
+
+            public RopeAnnotationListTypeTraits(ITypeTraits<T> itemTraits)
+            {
+                this.itemTraits = itemTraits;
+            }
+
+            public int Compare(RopeAnnotationList<T> a, RopeAnnotationList<T> b)
+            {
+                Walker wa = new Walker(a);
+                Walker wb = new Walker(b);
+                while(true)
+                {
+                    if (wa.IsAtEof && wb.IsAtEof)
+                    {
+                        return 0;
+                    }
+                    else if (wa.IsAtEof)
+                    {
+                        return -1;
+                    }
+                    else if (wb.IsAtEof)
+                    {
+                        return 1;
+                    }
+                    else
+                    {
+                        int spaceA = wa.SpaceAmount;
+                        int spaceB = wb.SpaceAmount;
+                        if (spaceA > 0 || spaceB > 0)
+                        {
+                            int minSpace = Math.Min(spaceA, spaceB);
+                            wa.ReadSpace(minSpace);
+                            wb.ReadSpace(minSpace);
+                        }
+                        else if (spaceA > 0)
+                        {
+                            return -1;
+                        }
+                        else if (spaceB > 0)
+                        {
+                            return 1;
+                        }
+                        else
+                        {
+                            T itemA = wa.ReadItem();
+                            T itemB = wb.ReadItem();
+                            int cmp = itemTraits.Compare(itemA, itemB);
+                            if (cmp != 0)
+                            {
+                                return cmp;
+                            }
+                        }
+                    }
+                }
+            }
+
+            public void AddToHash(HashBuilder b, RopeAnnotationList<T> a)
+            {
+                foreach (var itemWithOffset in a.EnumerateItemsWithOffsets())
+                {
+                    Int32TypeTraits.Value.AddToHash(b, itemWithOffset.Offset);
+                    itemTraits.AddToHash(b, itemWithOffset.Item);
+                }
+            }
+
+            public void CheckAnalogous(AnalogyTracker tracker, RopeAnnotationList<T> a, RopeAnnotationList<T> b)
+            {
+                if (tracker.IsAnalogous)
+                {
+                    Walker wa = new Walker(a);
+                    Walker wb = new Walker(b);
+
+                    while(true)
+                    {
+                        if (wa.IsAtEof && wb.IsAtEof)
+                        {
+                            return;
+                        }
+                        else if (wa.IsAtEof || wb.IsAtEof)
+                        {
+                            tracker.SetNonAnalogous();
+                            return;
+                        }
+                        else
+                        {
+                            int spaceA = wa.SpaceAmount;
+                            int spaceB = wb.SpaceAmount;
+                            if (spaceA > 0 || spaceB > 0)
+                            {
+                                if (spaceA != spaceB)
+                                {
+                                    tracker.SetNonAnalogous();
+                                    return;
+                                }
+                                else
+                                {
+                                    wa.ReadSpace(spaceA);
+                                    wb.ReadSpace(spaceB);
+                                }
+                            }
+                            else if (spaceA > 0)
+                            {
+                                tracker.SetNonAnalogous();
+                                return;
+                            }
+                            else if (spaceB > 0)
+                            {
+                                tracker.SetNonAnalogous();
+                                return;
+                            }
+                            else
+                            {
+                                T itemA = wa.ReadItem();
+                                T itemB = wb.ReadItem();
+                                itemTraits.CheckAnalogous(tracker, itemA, itemB);
+                                if (!tracker.IsAnalogous)
+                                {
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            public void CheckSerializability(SerializabilityTracker tracker, RopeAnnotationList<T> a)
+            {
+                foreach(var itemWithOffset in a.EnumerateItemsWithOffsets())
+                {
+                    itemTraits.CheckSerializability(tracker, itemWithOffset.Item);
+                }
+            }
+
+            public void Serialize(Serializer dest, RopeAnnotationList<T> a)
+            {
+                throw new NotImplementedException();
+            }
+
+            public RopeAnnotationList<T> Deserialize(Deserializer src)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void MeasureBytes(ByteMeasurer measurer, RopeAnnotationList<T> a)
+            {
+                throw new NotImplementedException();
+            }
+
+            public RopeAnnotationList<T> Clone(CloneTracker tracker, RopeAnnotationList<T> a) => a;
+
+            public void AppendDebugString(DebugStringBuilder sb, RopeAnnotationList<T> a)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        /// <summary>
+        /// Construct type traits, given the type traits of the annotation type.
+        /// </summary>
+        /// <param name="itemTraits">The type traits of the annotation type.</param>
+        /// <returns>Type traits for the entire rope annotation list.</returns>
+        public static ITypeTraits<RopeAnnotationList<T>> GetTypeTraits(ITypeTraits<T> itemTraits)
+        {
+            return new RopeAnnotationListTypeTraits(itemTraits);
+        }
     }
 
     /// <summary>
