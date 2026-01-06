@@ -1086,15 +1086,15 @@ namespace Sunlighter.FrayedKnot
 
             public int LeafSize()
             {
-                if (nodeStack.IsEmpty) return 0;
                 Normalize();
+                if (leafStack.IsEmpty) return 0;
                 return leafStack.Peek().Length;
             }
 
             public string Consume(int i)
             {
-                if (nodeStack.IsEmpty) throw new InvalidOperationException();
                 Normalize();
+                if (leafStack.IsEmpty) throw new InvalidOperationException("No characters available");
                 int avail = leafStack.Peek().Length;
 
                 if (i > avail) throw new InvalidOperationException("Attempt to consume too many characters");
