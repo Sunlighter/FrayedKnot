@@ -209,5 +209,33 @@ namespace FrayedKnotTests
 
             Assert.AreEqual(numberOfSets, hyperSet.Count, "Hyper set should contain the expected number of sets.");
         }
+
+        [TestMethod]
+        public void TestSerialization()
+        {
+            Random rand = new Random(0x2B1F3987);
+            int count = 5000;
+            Rope r = CreateTestRope(rand, count);
+            ITypeTraits<ImmutableList<Rope>> ropeListTraits = Builder.Instance.GetTypeTraits<ImmutableList<Rope>>();
+
+            int pos = rand.Next(r.Length + 1);
+            Rope r2 = r.Take(pos) + "[insertion]" + r.Skip(pos);
+
+            Rope.SerializationMode = RopeSerializationMode.Nodes;
+
+            ImmutableList<Rope> originalList = [r, r2];
+            byte[] serialized = ropeListTraits.SerializeToBytes(originalList);
+            ImmutableList<Rope> deserializedList = ropeListTraits.DeserializeFromBytes(serialized);
+
+            string desktopDir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+
+            //RopeUtility.WriteRopeToFile(Path.Combine(desktopDir, "01.old.txt"), r);
+            //RopeUtility.WriteRopeToFile(Path.Combine(desktopDir, "02.old.txt"), r2);
+            //RopeUtility.WriteRopeToFile(Path.Combine(desktopDir, "01.new.txt"), deserializedList[0]);
+            //RopeUtility.WriteRopeToFile(Path.Combine(desktopDir, "02.new.txt"), deserializedList[1]);
+
+            System.Diagnostics.Debug.WriteLine($"r.Length = {r.Length}, r2.Length = {r2.Length}, pos = {pos}, serialized.Length = {serialized.Length}");
+            Assert.AreEqual(0, ropeListTraits.Compare(originalList, deserializedList), "Deserialized rope should be equal to the original.");
+        }
     }
 }

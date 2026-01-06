@@ -1060,7 +1060,7 @@ namespace Sunlighter.FrayedKnot
 
                 if (!leafStack.IsEmpty) return;
 
-                while (leafStack.IsEmpty)
+                while (leafStack.IsEmpty && !nodeStack.IsEmpty)
                 {
                     NonEmptyNode n = nodeStack.Peek();
                     nodeStack = nodeStack.Pop();
@@ -1082,7 +1082,14 @@ namespace Sunlighter.FrayedKnot
                 }
             }
 
-            public bool IsEmpty => nodeStack.IsEmpty;
+            public bool IsEmpty
+            {
+                get
+                {
+                    Normalize();
+                    return leafStack.IsEmpty;
+                }
+            }
 
             public int LeafSize()
             {
