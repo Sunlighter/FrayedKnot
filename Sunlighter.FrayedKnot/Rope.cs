@@ -1167,7 +1167,7 @@ namespace Sunlighter.FrayedKnot
 
             public SerializationTracker()
             {
-                nextId = 1;
+                nextId = 0u;
                 nodes = new Dictionary<NonEmptyNode, uint>(ReferenceEqualityComparer.Instance);
             }
 
@@ -1187,13 +1187,11 @@ namespace Sunlighter.FrayedKnot
                     if (n is LeafNode leaf)
                     {
                         dest.Writer.Write(S_LEAF);
-                        UInt32TypeTraits.Value.Serialize(dest, id);
                         StringTypeTraits.Value.Serialize(dest, leaf.Value);
                     }
                     else if (n is TwoNode twoNode)
                     {
                         dest.Writer.Write(S_TWO_NODE);
-                        UInt32TypeTraits.Value.Serialize(dest, id);
                         WriteNode(dest, twoNode.Left);
                         WriteNode(dest, twoNode.Right);
 
@@ -1201,7 +1199,6 @@ namespace Sunlighter.FrayedKnot
                     else if (n is ThreeNode threeNode)
                     {
                         dest.Writer.Write(S_THREE_NODE);
-                        UInt32TypeTraits.Value.Serialize(dest, id);
                         WriteNode(dest, threeNode.Left);
                         WriteNode(dest, threeNode.Middle);
                         WriteNode(dest, threeNode.Right);
@@ -1216,48 +1213,55 @@ namespace Sunlighter.FrayedKnot
 
         private sealed class DeserializationTracker
         {
+            private uint nextId;
             private readonly Dictionary<uint, NonEmptyNode> nodes;
 
             public DeserializationTracker()
             {
+                nextId = 0u;
                 nodes = new Dictionary<uint, NonEmptyNode>();
             }
 
             public NonEmptyNode ReadNode(Deserializer src)
             {
                 byte b = src.Reader.ReadByte();
-                uint key = UInt32TypeTraits.Value.Deserialize(src);
                 if (b == S_EXISTING_NODE)
                 {
+                    uint key = UInt32TypeTraits.Value.Deserialize(src);
                     return nodes[key];
-                }
-                else if (b == S_LEAF)
-                {
-                    string s = StringTypeTraits.Value.Deserialize(src);
-                    LeafNode leaf = new LeafNode(s);
-                    nodes[key] = leaf;
-                    return leaf;
-                }
-                else if (b == S_TWO_NODE)
-                {
-                    NonEmptyNode left = ReadNode(src);
-                    NonEmptyNode right = ReadNode(src);
-                    TwoNode twoNode = new TwoNode(left, right);
-                    nodes[key] = twoNode;
-                    return twoNode;
-                }
-                else if (b == S_THREE_NODE)
-                {
-                    NonEmptyNode left = ReadNode(src);
-                    NonEmptyNode middle = ReadNode(src);
-                    NonEmptyNode right = ReadNode(src);
-                    ThreeNode threeNode = new ThreeNode(left, middle, right);
-                    nodes[key] = threeNode;
-                    return threeNode;
                 }
                 else
                 {
-                    throw new InvalidOperationException("Internal error: Unknown node type during deserialization");
+                    uint key = nextId;
+                    ++nextId;
+                    if (b == S_LEAF)
+                    {
+                        string s = StringTypeTraits.Value.Deserialize(src);
+                        LeafNode leaf = new LeafNode(s);
+                        nodes[key] = leaf;
+                        return leaf;
+                    }
+                    else if (b == S_TWO_NODE)
+                    {
+                        NonEmptyNode left = ReadNode(src);
+                        NonEmptyNode right = ReadNode(src);
+                        TwoNode twoNode = new TwoNode(left, right);
+                        nodes[key] = twoNode;
+                        return twoNode;
+                    }
+                    else if (b == S_THREE_NODE)
+                    {
+                        NonEmptyNode left = ReadNode(src);
+                        NonEmptyNode middle = ReadNode(src);
+                        NonEmptyNode right = ReadNode(src);
+                        ThreeNode threeNode = new ThreeNode(left, middle, right);
+                        nodes[key] = threeNode;
+                        return threeNode;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Internal error: Unknown node type during deserialization");
+                    }
                 }
             }
         }
@@ -1281,7 +1285,7 @@ namespace Sunlighter.FrayedKnot
                 }
                 else
                 {
-                    m.AddBytes(5); // S_LEAF / S_TWO_NODE / S_THREE_NODE + node ID
+                    m.AddBytes(1); // S_LEAF / S_TWO_NODE / S_THREE_NODE
                     encounteredNodes.Add(n);
                     if (n is LeafNode leaf)
                     {

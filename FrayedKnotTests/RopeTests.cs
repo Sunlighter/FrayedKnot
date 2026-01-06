@@ -225,6 +225,9 @@ namespace FrayedKnotTests
 
             ImmutableList<Rope> originalList = [r, r2];
             byte[] serialized = ropeListTraits.SerializeToBytes(originalList);
+
+            Assert.AreEqual(serialized.LongLength, ropeListTraits.MeasureAllBytes(originalList), "Measured size should match actual serialized size.");
+
             ImmutableList<Rope> deserializedList = ropeListTraits.DeserializeFromBytes(serialized);
 
             string desktopDir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
